@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
@@ -56,7 +57,7 @@ impl Component for Model {
         <path d={format!("M 10 130 Q {} {} 490 130", point[0], point[1])} stroke="black" fill="transparent"/>
         <path d={format!("M 10 110 Q {} {} 490 110", point[0], point[1])} stroke="black" fill="transparent"/>
         */
-        let rotation = 90;
+        let num_lines = 100;
         html! {
             <div class="container">
                 <svg
@@ -67,13 +68,20 @@ impl Component for Model {
                     xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <circle id="myCircle" cx="0" cy="0" r="10" />
+                        <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10" id="myTest" stroke="black" fill="transparent"/>
 
                         <linearGradient id="myGradient" gradientTransform="rotate(90)">
-                            <stop offset="10%" stop-color="cyan" />
-                            <stop offset="90%" stop-color="red" />
+                            <stop offset="10%" stop-color="white" />
+                            <stop offset="90%" stop-color="gold" />
                         </linearGradient>
                     </defs>
                     {self.render_board()}
+                    {
+                        (0..num_lines).map({|_i|
+                                            self.render_path(rand::thread_rng().gen_range(0, self.width),
+                                                            rand::thread_rng().gen_range(0, self.height))
+                        }).collect::<Html>()
+                    }
                 </svg>
             </div>
         }
@@ -94,12 +102,52 @@ impl Model {
     }
 
     fn render_item(&self, x: usize, y: usize) -> Html {
-        let angle = ((y as f32) / self.height as f32) * 180.0;
+        let angle = self.angle_at_deg(x, y);
         html! {
-            <g transform={format!("rotate({} {} {})", angle, x, y)}>
-                <use x=x y=y href="#myCircle" fill="url('#myGradient')" />
+            <g transform={format!("rotate({},{},{})", angle, x, y)}>
+                <use x=x y=y href="#myTest" fill="url('#myGradient')" />
             </g>
         }
+    }
+
+    fn render_path(&self, x: usize, y: usize) -> Html {
+        let start_point = (x as f32, y as f32);
+        let length = 35;
+        let val = (0..length).fold(
+            (
+                (format!("M {} {}", start_point.0, start_point.1)),
+                start_point,
+            ),
+            |(acc, last_point), _i| {
+                let angle = self.angle_at_rad(last_point.0, last_point.1);
+                let next_point = (
+                    last_point.0 + angle.cos() * self.step as f32,
+                    last_point.1 + angle.sin() * self.step as f32,
+                );
+                return (
+                    format!("{} L {} {}", acc, next_point.0, next_point.1),
+                    next_point,
+                );
+            },
+        );
+        html! {
+            <path d={val.0} stroke="red" stroke-width="3" fill="transparent"/>
+        }
+    }
+
+    fn angle_at_rad(&self, x: f32, y: f32) -> f32 {
+        2.0 * ((if x < 200.0 { x - 100.0 } else { -x }) / (self.width as f32) * 2.5)
+            * ((y - 100.0) / (self.height as f32))
+            * std::f32::consts::PI
+            + 0.5 * std::f32::consts::PI
+    }
+
+    fn angle_at_deg(&self, x: usize, y: usize) -> f32 {
+        let x = x as f32;
+        let y = y as f32;
+        2.0 * ((if x < 200.0 { x - 100.0 } else { -x }) / (self.width as f32) * 2.5)
+            * ((y - 100.0) / (self.height as f32))
+            * 180.0
     }
 }
 

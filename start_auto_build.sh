@@ -1,1 +1,1 @@
-ls **/*.toml **/*.rs www/*.html www/*.js | entr -s "cargo fmt && wasm-pack build"
+ls *.toml **/*.rs www/*.html www/*.js | entr -s "cargo fmt && wasm-pack build"
