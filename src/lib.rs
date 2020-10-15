@@ -132,6 +132,7 @@ impl Component for Model {
                     </defs>
                     //{self.render_arrows()}
                     {self.render_paths()}
+                    //{self.render_circles()}
                 </svg>
             </div>
         }
@@ -177,32 +178,105 @@ impl Model {
         }
     }
 
+    fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
+        let mut i = 0;
+        loop {
+            let x = rand::thread_rng().gen_range(0, self.width) as f32;
+            let y = rand::thread_rng().gen_range(0, self.height) as f32;
+            let p = Point { x, y };
+            let mut matching_circles = circles
+                .iter()
+                .filter(|(c, _)| self.in_circle(&p, &c, diameter));
+
+            if matching_circles.next().is_none() {
+                log!("worked at {}", i);
+                return p;
+            }
+            i += 1;
+            if i == 10000 {
+                panic!("should never be reached");
+            }
+        }
+    }
+
+    fn circles(&self) -> Vec<(Circle, &'static str)> {
+        let num_circles = 100;
+        (0..num_circles).fold(Vec::new(), |mut acc, i| {
+            acc.push(if i < 10 {
+                (
+                    Circle {
+                        p: self.gen_random_point(60, &acc),
+                        r: 60,
+                    },
+                    "#E4572E",
+                )
+            } else if i < 40 {
+                (
+                    Circle {
+                        p: self.gen_random_point(20, &acc),
+                        r: 20,
+                    },
+                    "#F3A712",
+                )
+            } else {
+                (
+                    Circle {
+                        p: self.gen_random_point(10, &acc),
+                        r: 10,
+                    },
+                    "#A8C686",
+                )
+            });
+            acc
+        })
+        //vec![
+        //    (
+        //        Circle {
+        //            p: Point { x: 200.0, y: 300.0 },
+        //            r: 50,
+        //        },
+        //        "#F3A712",
+        //    ),
+        //    (
+        //        Circle {
+        //            p: Point { x: 150.0, y: 100.0 },
+        //            r: 20,
+        //        },
+        //        "#F3A712",
+        //    ),
+        //    (
+        //        Circle {
+        //            p: Point { x: 150.0, y: 100.0 },
+        //            r: 50,
+        //        },
+        //        "#E4572E",
+        //    ),
+        //    (
+        //        Circle {
+        //            p: Point { x: 300.0, y: 250.0 },
+        //            r: 50,
+        //        },
+        //        "#A8C686",
+        //    ),
+        //]
+    }
+
+    fn render_circles(&self) -> Vec<Html> {
+        let circles = self.circles();
+        circles
+            .iter()
+            .map(|(circle, color)| {
+                html! {
+                    <circle cx={circle.p.x} cy={circle.p.y} r={circle.r} fill={color} />
+                }
+            })
+            .collect()
+    }
+
     fn render_paths(&self) -> Vec<Html> {
         let num_lines = 10000;
         let mut all_points = Vec::new();
-        let circles = vec![
-            (
-                Circle {
-                    p: Point { x: 150.0, y: 100.0 },
-                    r: 100,
-                },
-                "#E4572E",
-            ),
-            (
-                Circle {
-                    p: Point { x: 200.0, y: 300.0 },
-                    r: 100,
-                },
-                "#F3A712",
-            ),
-            (
-                Circle {
-                    p: Point { x: 300.0, y: 250.0 },
-                    r: 100,
-                },
-                "#A8C686",
-            ),
-        ];
+        let circles = self.circles();
         (0..num_lines).fold(Vec::new(), |mut acc, _i| {
             let item = self.render_path(self.random_point(&all_points));
             acc.push(html! {
@@ -210,7 +284,7 @@ impl Model {
                     let first_item = item.items.first().unwrap();
                     let mut candidates = circles
                         .iter().filter(|(circle, _color)|
-                                self.in_circle(first_item, circle));
+                                self.in_circle(first_item, circle, 0));
                     match candidates.next() {
                         Some((_, color)) => color,
                         None => "#669BBC"
@@ -252,8 +326,8 @@ impl Model {
         val.0
     }
 
-    fn in_circle(&self, p: &Point, c: &Circle) -> bool {
-        ((p.x - c.p.x).powi(2) + (p.y - c.p.y).powi(2)).sqrt() < c.r as f32
+    fn in_circle(&self, p: &Point, c: &Circle, other_radius: usize) -> bool {
+        ((p.x - c.p.x).powi(2) + (p.y - c.p.y).powi(2)).sqrt() <= c.r as f32 + other_radius as f32
     }
 
     fn angle_calculation(&self, p: Point) -> f32 {
