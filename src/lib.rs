@@ -115,6 +115,7 @@ impl Component for Model {
         .collect::<Vec<UsizePoint>>();*/
         html! {
             <div class="container">
+                <h1> { "ahoy!" } </h1>
                 <svg
                     width={self.width}
                     height={self.height}
@@ -206,7 +207,7 @@ impl Model {
                 (
                     Circle {
                         p: self.gen_random_point(60, &acc),
-                        r: 60,
+                        r: 50,
                     },
                     "#E4572E",
                 )
@@ -229,36 +230,6 @@ impl Model {
             });
             acc
         })
-        //vec![
-        //    (
-        //        Circle {
-        //            p: Point { x: 200.0, y: 300.0 },
-        //            r: 50,
-        //        },
-        //        "#F3A712",
-        //    ),
-        //    (
-        //        Circle {
-        //            p: Point { x: 150.0, y: 100.0 },
-        //            r: 20,
-        //        },
-        //        "#F3A712",
-        //    ),
-        //    (
-        //        Circle {
-        //            p: Point { x: 150.0, y: 100.0 },
-        //            r: 50,
-        //        },
-        //        "#E4572E",
-        //    ),
-        //    (
-        //        Circle {
-        //            p: Point { x: 300.0, y: 250.0 },
-        //            r: 50,
-        //        },
-        //        "#A8C686",
-        //    ),
-        //]
     }
 
     fn render_circles(&self) -> Vec<Html> {
@@ -274,25 +245,37 @@ impl Model {
     }
 
     fn render_paths(&self) -> Vec<Html> {
-        let num_lines = 10000;
+        let num_lines = (0.05 * ((self.width * self.height) as f32)) as usize;
         let mut all_points = Vec::new();
         let circles = self.circles();
-        (0..num_lines).fold(Vec::new(), |mut acc, _i| {
-            let item = self.render_path(self.random_point(&all_points));
+        let borders = (self.width + self.height) * 2;
+        (0..(num_lines + borders)).fold(Vec::new(), |mut acc, i| {
+            let point = if i < borders {
+                UsizePoint {
+                    x: if i < 2 * self.width {
+                        i % self.width
+                    } else if i < 2 * self.width + self.height {
+                        0
+                    } else {
+                        self.width - 1
+                    },
+                    y: if i < self.width {
+                        0
+                    } else if i < 2 * self.width {
+                        self.height - 1
+                    } else {
+                        (i - 2 * self.width) % self.height
+                    },
+                }
+            } else {
+                self.random_point(&all_points)
+            };
+            let item = self.render_path(point);
+            let color = self.select_path_color(&item, &circles);
             acc.push(html! {
-                <path d={item.draw()} stroke={
-                    let first_item = item.items.first().unwrap();
-                    let mut candidates = circles
-                        .iter().filter(|(circle, _color)|
-                                self.in_circle(first_item, circle, 0));
-                    match candidates.next() {
-                        Some((_, color)) => color,
-                        None => "#669BBC"
-                    }
-                } stroke-width="1" fill="transparent"/>
+                <path d={item.draw()} stroke={color} stroke-width="1" fill="transparent"/>
             });
-            for i in item.items {
-                let p = i;
+            for p in item.items {
                 let x = p.x as u32;
                 let y = p.y as u32;
                 if x < self.width as u32 && y < self.height as u32 {
@@ -305,12 +288,27 @@ impl Model {
         })
     }
 
+    fn select_path_color(
+        &self,
+        item: &Line,
+        circles: &Vec<(Circle, &'static str)>,
+    ) -> &'static str {
+        let first_item = item.items.first().unwrap();
+        let mut candidates = circles
+            .iter()
+            .filter(|(circle, _color)| self.in_circle(first_item, circle, 0));
+        match candidates.next() {
+            Some((_, color)) => color,
+            None => "#669BBC",
+        }
+    }
+
     fn render_path(&self, p: UsizePoint) -> Line {
         let start_point = Point {
             x: p.x as f32,
             y: p.y as f32,
         };
-        let length = 15;
+        let length = (self.width + self.height) / 200;
         let line = Line {
             items: vec![start_point],
         };
@@ -333,9 +331,10 @@ impl Model {
     fn angle_calculation(&self, p: Point) -> f32 {
         let height = self.height as f32;
         let width = self.width as f32;
-        let x = p.x * 2.0 - width * 0.5;
+        let x = width / ((p.x - 0.5 * width) * 0.2 - width)
+            - ((p.x - 0.5 * width) * 2.0 - width * 0.5) / width;
         let y = p.y * p.y - height * height * 0.7;
-        (x / width) * ((y / (height * height)) * 0.5)
+        x * ((y / (height * height)) * 0.5)
     }
 
     fn angle_at_rad(&self, p: Point) -> f32 {
