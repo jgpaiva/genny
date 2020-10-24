@@ -158,6 +158,25 @@ impl Model {
         }
     }
 
+    fn border_point(&self, i: usize) -> UsizePoint{
+        UsizePoint {
+            x: if i < 2 * self.width {
+                i % self.width
+            } else if i < 2 * self.width + self.height {
+                0
+            } else {
+                self.width - 1
+            },
+            y: if i < self.width {
+                0
+            } else if i < 2 * self.width {
+                self.height - 1
+            } else {
+                (i - 2 * self.width) % self.height
+            },
+        }
+    } 
+
     fn render_arrows(&self) -> Html {
         html! {{
             (0..self.height-self.step).step_by(self.step).skip(1).map(|y| self.render_arrow_line(y)).collect::<Html>()
@@ -251,22 +270,7 @@ impl Model {
         let borders = (self.width + self.height) * 2;
         (0..(num_lines + borders)).fold(Vec::new(), |mut acc, i| {
             let point = if i < borders {
-                UsizePoint {
-                    x: if i < 2 * self.width {
-                        i % self.width
-                    } else if i < 2 * self.width + self.height {
-                        0
-                    } else {
-                        self.width - 1
-                    },
-                    y: if i < self.width {
-                        0
-                    } else if i < 2 * self.width {
-                        self.height - 1
-                    } else {
-                        (i - 2 * self.width) % self.height
-                    },
-                }
+                self.border_point(i)
             } else {
                 self.random_point(&all_points)
             };
