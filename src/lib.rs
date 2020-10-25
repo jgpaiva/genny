@@ -31,7 +31,7 @@ enum Msg {
     ToggleCircles,
 }
 
-struct Line {
+struct Path {
     items: Vec<Point>,
 }
 
@@ -52,7 +52,7 @@ struct UsizePoint {
     y: usize,
 }
 
-impl Line {
+impl Path {
     fn draw(&self) -> std::string::String {
         self.items
             .iter()
@@ -310,11 +310,11 @@ impl Model {
     }
 
     fn render_paths(&self) -> Vec<Html> {
-        let num_lines = (0.05 * ((self.width * self.height) as f32)) as usize;
+        let num_paths = (0.05 * ((self.width * self.height) as f32)) as usize;
         let mut all_points = Vec::new();
         let circles = self.circles();
         let borders = (self.width + self.height) * 2;
-        (0..(num_lines + borders)).fold(Vec::new(), |mut acc, i| {
+        (0..(num_paths + borders)).fold(Vec::new(), |mut acc, i| {
             let point = if i < borders {
                 self.border_point(i)
             } else {
@@ -340,7 +340,7 @@ impl Model {
 
     fn select_path_color(
         &self,
-        item: &Line,
+        item: &Path,
         circles: &Vec<(Circle, &'static str)>,
     ) -> &'static str {
         let first_item = item.items.first().unwrap();
@@ -353,16 +353,16 @@ impl Model {
         }
     }
 
-    fn render_path(&self, p: UsizePoint) -> Line {
+    fn render_path(&self, p: UsizePoint) -> Path {
         let start_point = Point {
             x: p.x as f32,
             y: p.y as f32,
         };
         let length = (self.width + self.height) / 200;
-        let line = Line {
+        let path = Path {
             items: vec![start_point],
         };
-        let val = (0..length).fold((line, start_point), |(mut acc, last_point), _i| {
+        let val = (0..length).fold((path, start_point), |(mut acc, last_point), _i| {
             let angle = self.angle_at_rad(last_point);
             let next_point = Point {
                 x: last_point.x + angle.cos() * self.step as f32,
