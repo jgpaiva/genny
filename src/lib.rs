@@ -55,7 +55,7 @@ impl Arrow {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Point {
     x: f32,
     y: f32,
@@ -404,18 +404,25 @@ impl Model {
         p.distance_to(&c.p) <= c.r as f32 + other_radius as f32
     }
 
-    fn changed_angle_at(&self, p: Point) -> f32 {
-        let angle = 0.0 as f32;
+    fn modify_angle_at(&self, p: Point, angle: f32) -> f32 {
+        let max_effect_point = Point { x: 250.0, y: 250.0 };
+        let distance = p.distance_to(&max_effect_point) * 4.0;
+        let factor = 1.0 / ((distance / self.width as f32).powf(2.0) + 1.0);
+        //log!(
+        //    "point is {:?}, distance is {}, factor is {}",
+        //    p,
+        //    distance,
+        //    factor
+        //);
+
         let cos = angle.cos();
         let sin = angle.sin();
         let bias_x = 0.0;
         let bias_y = 1.0;
-        let distance = p.distance_to(&Point { x: 100.0, y: 100.0 });
-        let factor = 1.0 - (distance / (self.width as f32 + self.height as f32));
-        let factor = 0.0;
         let new_x = (1.0 - factor) * cos + factor * bias_x;
         let new_y = (1.0 - factor) * sin + factor * bias_y;
-        new_y.atan2(new_x) / (2.0 * std::f32::consts::PI)
+
+        new_y.atan2(new_x)
     }
 
     fn zero_to_one_flow_field(&self, p: Point) -> f32 {
@@ -428,7 +435,10 @@ impl Model {
     }
 
     fn angle_at(&self, p: Point) -> f32 {
-        self.zero_to_one_flow_field(p) * std::f32::consts::PI * 2.0
+        self.modify_angle_at(
+            p,
+            self.zero_to_one_flow_field(p) * std::f32::consts::PI * 2.0,
+        )
     }
 }
 
