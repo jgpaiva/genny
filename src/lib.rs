@@ -31,13 +31,28 @@ enum Msg {
     ToggleCircles,
 }
 
-struct Path {
-    items: Vec<Point>,
-}
-
 struct Circle {
     p: Point,
     r: usize,
+}
+
+struct Arrow {
+    p: Point,
+    angle: f32,
+}
+
+impl Arrow {
+    fn draw(&self) -> Html {
+        html! {
+            <g transform={format!("rotate({},{},{})", Arrow::rad_to_deg(self.angle), self.p.x, self.p.y)}>
+                <use x=self.p.x y=self.p.y href="#arrow" fill="black" />
+            </g>
+        }
+    }
+
+    fn rad_to_deg(rad: f32) -> f32 {
+        -((rad + std::f32::consts::PI * 0.5) * 180.0 / std::f32::consts::PI)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -46,15 +61,33 @@ struct Point {
     y: f32,
 }
 
+impl Point {
+    fn distance_to(&self, p: &Point) -> f32 {
+        ((self.x - p.x).powi(2) + (self.y - p.y).powi(2)).sqrt()
+    }
+
+    fn from_usize(x: usize, y: usize) -> Point {
+        Point {
+            x: x as f32,
+            y: y as f32,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 struct UsizePoint {
     x: usize,
     y: usize,
 }
 
+struct Path {
+    items: Vec<Point>,
+}
+
 impl Path {
-    fn draw(&self) -> std::string::String {
-        self.items
+    fn draw(&self, color: &str) -> Html {
+        let path = self
+            .items
             .iter()
             .enumerate()
             .fold("".to_string(), |acc, (i, item)| {
@@ -65,7 +98,11 @@ impl Path {
                     item.x,
                     item.y
                 )
-            })
+            });
+
+        html! {
+            <path d={path} stroke={color} stroke-width="1" fill="transparent"/>
+        }
     }
 }
 
@@ -78,7 +115,7 @@ impl Component for Model {
             width: 500,
             height: 500,
             step: 15,
-            arrows_enabled: false,
+            arrows_enabled: true,
             paths_enabled: false,
             circles_enabled: false,
         }
@@ -231,17 +268,8 @@ impl Model {
 
     fn render_arrow_line(&self, y: usize) -> Html {
         html! {{
-            (0..self.width-self.step).step_by(self.step).skip(1).map(|x| self.render_arrow(UsizePoint{x, y})).collect::<Html>()
+            (0..self.width-self.step).step_by(self.step).skip(1).map(|x| Arrow{ p: Point::from_usize(x,y),angle: self.angle_at(Point::from_usize(x,y))}.draw()).collect::<Html>()
         }}
-    }
-
-    fn render_arrow(&self, p: UsizePoint) -> Html {
-        let angle = self.angle_at_deg(p.x, p.y);
-        html! {
-            <g transform={format!("rotate({},{},{})", angle, p.x, p.y)}>
-                <use x=p.x y=p.y href="#arrow" fill="url('#myGradient')" />
-            </g>
-        }
     }
 
     fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
@@ -322,9 +350,7 @@ impl Model {
             };
             let item = self.render_path(point);
             let color = self.select_path_color(&item, &circles);
-            acc.push(html! {
-                <path d={item.draw()} stroke={color} stroke-width="1" fill="transparent"/>
-            });
+            acc.push(item.draw(color));
             for p in item.items {
                 let x = p.x as u32;
                 let y = p.y as u32;
@@ -363,7 +389,7 @@ impl Model {
             items: vec![start_point],
         };
         let val = (0..length).fold((path, start_point), |(mut acc, last_point), _i| {
-            let angle = self.angle_at_rad(last_point);
+            let angle = self.angle_at(last_point);
             let next_point = Point {
                 x: last_point.x + angle.cos() * self.step as f32,
                 y: last_point.y + angle.sin() * self.step as f32,
@@ -375,10 +401,24 @@ impl Model {
     }
 
     fn in_circle(&self, p: &Point, c: &Circle, other_radius: usize) -> bool {
-        ((p.x - c.p.x).powi(2) + (p.y - c.p.y).powi(2)).sqrt() <= c.r as f32 + other_radius as f32
+        p.distance_to(&c.p) <= c.r as f32 + other_radius as f32
     }
 
-    fn angle_calculation(&self, p: Point) -> f32 {
+    fn changed_angle_at(&self, p: Point) -> f32 {
+        let angle = 0.0 as f32;
+        let cos = angle.cos();
+        let sin = angle.sin();
+        let bias_x = 0.0;
+        let bias_y = 1.0;
+        let distance = p.distance_to(&Point { x: 100.0, y: 100.0 });
+        let factor = 1.0 - (distance / (self.width as f32 + self.height as f32));
+        let factor = 0.0;
+        let new_x = (1.0 - factor) * cos + factor * bias_x;
+        let new_y = (1.0 - factor) * sin + factor * bias_y;
+        new_y.atan2(new_x) / (2.0 * std::f32::consts::PI)
+    }
+
+    fn zero_to_one_flow_field(&self, p: Point) -> f32 {
         let height = self.height as f32;
         let width = self.width as f32;
         let x = width / ((p.x - 0.5 * width) * 0.2 - width)
@@ -387,14 +427,8 @@ impl Model {
         x * ((y / (height * height)) * 0.5)
     }
 
-    fn angle_at_rad(&self, p: Point) -> f32 {
-        self.angle_calculation(p) * 2.0 * std::f32::consts::PI + 0.5 * std::f32::consts::PI
-    }
-
-    fn angle_at_deg(&self, x: usize, y: usize) -> f32 {
-        let x = x as f32;
-        let y = y as f32;
-        self.angle_calculation(Point { x, y }) * 360.0
+    fn angle_at(&self, p: Point) -> f32 {
+        self.zero_to_one_flow_field(p) * std::f32::consts::PI * 2.0
     }
 }
 
