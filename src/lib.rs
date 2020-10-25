@@ -19,12 +19,16 @@ struct Model {
     step: usize,
     width: usize,
     height: usize,
+    arrows_enabled: bool,
+    paths_enabled: bool,
+    circles_enabled: bool,
     link: ComponentLink<Self>,
-    value: i64,
 }
 
 enum Msg {
-    AddOne,
+    ToggleArrows,
+    TogglePaths,
+    ToggleCircles,
 }
 
 struct Line {
@@ -74,13 +78,17 @@ impl Component for Model {
             width: 500,
             height: 500,
             step: 15,
-            value: 0,
+            arrows_enabled: false,
+            paths_enabled: false,
+            circles_enabled: false,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::AddOne => self.value += 1,
+            Msg::ToggleArrows => self.arrows_enabled = !self.arrows_enabled,
+            Msg::TogglePaths => self.paths_enabled = !self.paths_enabled,
+            Msg::ToggleCircles => self.circles_enabled = !self.circles_enabled,
         }
         true
     }
@@ -93,10 +101,6 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        /*
-        <button onclick=self.link.callback(|_| Msg::AddOne)>{ "+1" }</button>
-        <p>{ self.value }</p>
-        */
         /*
         <path d={format!("M 10 250 T 10 250 T {} {} T 490 250", point[0], point[1])} stroke="blue" fill="transparent"/>
         <path d={format!("M 10 250 Q {} {} 490 250", point[0], point[1])} stroke="black" fill="transparent"/>
@@ -131,10 +135,52 @@ impl Component for Model {
                             <stop offset="90%" stop-color="gold" />
                         </linearGradient>
                     </defs>
-                    //{self.render_arrows()}
-                    {self.render_paths()}
-                    //{self.render_circles()}
+                    {
+                        if self.arrows_enabled {
+                            self.render_arrows()
+                        } else{
+                            html!{}
+                        }
+                    }
+                    {
+                        if self.paths_enabled {
+                            self.render_paths()
+                        } else{
+                            vec![html!{}]
+                        }
+                    }
+                    {
+                        if self.circles_enabled {
+                            self.render_circles()
+                        } else{
+                            vec![html!{}]
+                        }
+                    }
                 </svg>
+                <br/>
+                <input
+                    type="checkbox"
+                    id="toggle_arrows"
+                    checked=self.arrows_enabled
+                    onclick=self.link.callback(|_| Msg::ToggleArrows)
+                />
+                {" render arrows" }
+                <br/>
+                <input
+                    type="checkbox"
+                    id="toggle_circles"
+                    checked=self.circles_enabled
+                    onclick=self.link.callback(|_| Msg::ToggleCircles)
+                />
+                {" render circles" }
+                <br/>
+                <input
+                    type="checkbox"
+                    id="toggle_paths"
+                    checked=self.paths_enabled
+                    onclick=self.link.callback(|_| Msg::TogglePaths)
+                />
+                {" render paths" }
             </div>
         }
     }
@@ -158,7 +204,7 @@ impl Model {
         }
     }
 
-    fn border_point(&self, i: usize) -> UsizePoint{
+    fn border_point(&self, i: usize) -> UsizePoint {
         UsizePoint {
             x: if i < 2 * self.width {
                 i % self.width
@@ -175,7 +221,7 @@ impl Model {
                 (i - 2 * self.width) % self.height
             },
         }
-    } 
+    }
 
     fn render_arrows(&self) -> Html {
         html! {{
