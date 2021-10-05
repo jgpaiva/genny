@@ -1,7 +1,10 @@
 #![recursion_limit = "1024"]
 
 use rand::Rng;
-use std::convert::TryFrom;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 extern crate console_error_panic_hook;
@@ -23,7 +26,43 @@ struct Model {
     paths_enabled: bool,
     squares_enabled: bool,
     circles_enabled: bool,
+    color_scheme: String,
     link: ComponentLink<Self>,
+}
+
+impl Model {
+    fn colors(&self) -> HashMap<String, Vec<String>> {
+        vec![
+            (
+                "bluish_colors",
+                vec!["#CDC392", "#E8E5DA", "#9EB7E5", "#648DE5", "#304C89"],
+            ),
+            (
+                "tropical_colors",
+                vec!["#BF3100", "#8EA604", "#D76A03", "#EC9F05", "#F5BB00"],
+            ),
+            (
+                "accented_colors",
+                vec!["#011627", "#D5CAD6", "#2EC4B6", "#E71D36", "#FF9F1C"],
+            ),
+            (
+                "pastel_colors",
+                vec!["#1A535C", "#4ECDC4", "#721817", "#FF6B6B", "#F49D37"],
+            ),
+            (
+                "red_colors",
+                vec!["#370617", "#DC2F02", "#F48C06", "#FFBA08", "#9D0208"],
+            ),
+        ]
+        .iter()
+        .map(|(k, v)| {
+            (
+                (*k).to_owned(),
+                v.iter().map(|x| (*x).to_owned()).collect::<Vec<String>>(),
+            )
+        })
+        .collect()
+    }
 }
 
 enum Msg {
@@ -31,6 +70,7 @@ enum Msg {
     TogglePaths,
     ToggleCircles,
     ToggleSquares,
+    UpdateColor(yew::ChangeData),
 }
 
 struct Circle {
@@ -56,26 +96,81 @@ impl Arrow {
         -((rad + std::f32::consts::PI * 0.5) * 180.0 / std::f32::consts::PI)
     }
 }
-struct Square {
+
+struct InitialSquare {
     p: Point,
     link_right: bool,
     link_down: bool,
 }
 
-impl Square {
-    fn draw(&self) -> Html {
-        let square = html! { <use x=self.p.x y=self.p.y href="#square" fill="black" /> };
+struct WithLinksSquare {
+    p: Point,
+    link_up: bool,
+    link_left: bool,
+    link_right: bool,
+    link_down: bool,
+}
+struct WithClustersSquare {
+    p: Point,
+    link_up: bool,
+    link_left: bool,
+    link_right: bool,
+    link_down: bool,
+    cluster_id: usize,
+    cluster_size: usize,
+}
+
+impl WithClustersSquare {
+    fn draw(&self, squares: &Vec<Vec<WithClustersSquare>>, colors: &Vec<String>) -> Html {
+        let max_cluster_size = squares
+            .iter()
+            .flatten()
+            .map(|square| square.cluster_size)
+            .max()
+            .expect("there's always at least the current cluster");
+        let color = if self.cluster_size == 1 {
+            colors[0].to_owned()
+        } else if (self.cluster_size as f32) < ((2.0 / 5.0) * max_cluster_size as f32) {
+            colors[1].to_owned()
+        } else if (self.cluster_size as f32) < ((3.0 / 5.0) * max_cluster_size as f32) {
+            colors[2].to_owned()
+        } else if self.cluster_size == max_cluster_size {
+            colors[4].to_owned()
+        } else {
+            colors[3].to_owned()
+        };
+        let square = html! { <use x=self.p.x y=self.p.y href="#square" stroke=color fill=color/>};
         let link_right = if self.link_right {
-            html! { <use x=self.p.x y=self.p.y href="#link_right" fill="black" />}
+            html! { <use x=self.p.x y=self.p.y href="#link_right" stroke=color fill=color/>}
         } else {
             html! {}
         };
         let link_down = if self.link_down {
-            html! {<use x=self.p.x y=self.p.y href="#link_down" fill="black" />}
+            html! {<use x=self.p.x y=self.p.y href="#link_down" stroke=color fill=color/>}
         } else {
             html! {}
         };
-        vec![square, link_right, link_down]
+        let top = if self.link_up {
+            html! {<use x=self.p.x y=self.p.y href="#connection_up" stroke = color/>}
+        } else {
+            html! {<use x=self.p.x y=self.p.y href="#closed_top"  stroke = color/>}
+        };
+        let right = if self.link_right {
+            html! {<use x=self.p.x y=self.p.y href="#connection_right" stroke = color/>}
+        } else {
+            html! {<use x=self.p.x y=self.p.y href="#closed_right" stroke = color/>}
+        };
+        let left = if self.link_left {
+            html! {<use x=self.p.x y=self.p.y href="#connection_left" stroke = color/>}
+        } else {
+            html! {<use x=self.p.x y=self.p.y href="#closed_left" stroke = color/>}
+        };
+        let bottom = if self.link_down {
+            html! {<use x=self.p.x y=self.p.y href="#connection_down" stroke = color/>}
+        } else {
+            html! {<use x=self.p.x y=self.p.y href="#closed_bottom" stroke = color/>}
+        };
+        vec![top, left, right, bottom, square, link_right, link_down]
             .into_iter()
             .collect::<Html>()
     }
@@ -138,13 +233,14 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
             link,
-            width: 500,
-            height: 500,
+            width: 170,
+            height: 170,
             step: 15,
             arrows_enabled: false,
             paths_enabled: false,
             squares_enabled: true,
             circles_enabled: false,
+            color_scheme: "accented_colors".to_owned(),
         }
     }
 
@@ -154,6 +250,13 @@ impl Component for Model {
             Msg::TogglePaths => self.paths_enabled = !self.paths_enabled,
             Msg::ToggleSquares => self.squares_enabled = !self.squares_enabled,
             Msg::ToggleCircles => self.circles_enabled = !self.circles_enabled,
+            Msg::UpdateColor(cd) => {
+                let color_scheme = match cd {
+                    ChangeData::Select(se) => se.value(),
+                    _ => unreachable!(),
+                };
+                self.color_scheme = color_scheme;
+            }
         }
         true
     }
@@ -185,7 +288,6 @@ impl Component for Model {
 
         html! {
             <div class="container">
-                <h1> { "ahoy!" } </h1>
                 <svg
                     width={self.width}
                     height={self.height}
@@ -194,10 +296,20 @@ impl Component for Model {
                     xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <circle id="myCircle" cx="0" cy="0" r="10" />
-                        <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10" id="arrow" stroke="black" fill="transparent"/>
-                        <path d="M 0 0 L 0 10 L 10 10 L 10 0 L 0 0" id="square" stroke="black" fill="black"/>
-                        <path d="M 10 3 L 10 7 L 14 7 L 14 3 L 10 3" id="link_right" stroke="black" fill="black"/>
-                        <path d="M 3 10 L 3 14 L 7 14 L 7 10 L 3 10" id="link_down" stroke="black" fill="black"/>
+                        <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10 Z" id="arrow" stroke="black" fill="transparent"/>
+                        <path d="M 1 1 L 1 9 L 9 9 L 9 1 L 1 1 Z" id="square"/>
+                        <path d="M 8 1 L 8 9 L 16 9 L 16 1 L 9 1 Z" id="link_right" />
+                        <path d="M 1 8 L 1 16 L 9 16 L 9 8 L 1 8 Z" id="link_down" />
+
+                        <path d="M 0 0 L 10 0 Z" id="closed_top" stroke-linecap="round"/>
+                        <path d="M 10 0 L 10 10 Z" id="closed_right" stroke-linecap="round"/>
+                        <path d="M 0 0 L 0 10 Z" id="closed_left" stroke-linecap="round"/>
+                        <path d="M 0 10 L 10 10 Z" id="closed_bottom" stroke-linecap="round"/>
+
+                        <path d="M 0 0 L 0 -5 Z" id="connection_up" stroke-linecap="square"/>
+                        <path d="M 10 0 L 15 0 Z" id="connection_right" stroke-linecap="square"/>
+                        <path d="M 0 10 L -5 10 Z" id="connection_left" stroke-linecap="square"/>
+                        <path d="M 10 10 L 10 15 Z" id="connection_down" stroke-linecap="square"/>
 
                         <linearGradient id="myGradient" gradientTransform="rotate(90)">
                             <stop offset="10%" stop-color="white" />
@@ -234,6 +346,12 @@ impl Component for Model {
                     }
                 </svg>
                 <br/>
+                {"Select theme: " }
+                {
+                    self.render_color_options()
+                }
+                <br/>
+                /*
                 <input
                     type="checkbox"
                     id="toggle_arrows"
@@ -265,7 +383,7 @@ impl Component for Model {
                     onclick=self.link.callback(|_| Msg::TogglePaths)
                 />
                 {" render paths" }
-                <br/>
+                <br/>*/
             </div>
         }
     }
@@ -308,6 +426,23 @@ impl Model {
         }
     }
 
+    fn render_color_options(&self) -> Html {
+        html! {
+            <select name="colors" id="colors" onchange=self.link.callback(|cd| Msg::UpdateColor(cd))>
+            {{
+                let self_colors = self.colors();
+                let mut colors:Vec<_> = self_colors.keys().collect();
+                colors.sort();
+                colors.iter().map(|color_name|{
+                    html!{
+                        <option value=color_name>{color_name}</option>
+                    }
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
     fn render_arrows(&self) -> Html {
         (0..self.height - self.step)
             .step_by(self.step)
@@ -331,28 +466,134 @@ impl Model {
     }
 
     fn render_squares(&self) -> Html {
-        (0..self.height - self.step)
-            .step_by(self.step)
-            .skip(1)
-            .map(|y| self.render_square_line(y))
+        let squares = self.create_squares();
+        squares
+            .iter()
+            .map(|line| {
+                line.into_iter()
+                    .map(|square| {
+                        square.draw(&squares, self.colors().get(&self.color_scheme).unwrap())
+                    })
+                    .collect::<Html>()
+            })
             .collect::<Html>()
     }
 
-    fn render_square_line(&self, y: usize) -> Html {
-        (0..self.width - self.step)
+    fn create_squares(&self) -> Vec<Vec<WithClustersSquare>> {
+        let first_pass: Vec<Vec<_>> = (0..self.height - self.step)
             .step_by(self.step)
             .skip(1)
-            .map(|x| {
-                let link_down = rand::thread_rng().gen_range(0, 2) > 0;
-                let link_right = rand::thread_rng().gen_range(0, 2) > 0;
-                Square {
-                    p: Point::from_usize(x, y),
-                    link_down,
-                    link_right,
-                }
-                .draw()
+            .map(|y| {
+                (0..self.width - self.step)
+                    .step_by(self.step)
+                    .skip(1)
+                    .map(|x| {
+                        let link_right = (rand::thread_rng().gen_range(0, 3) < 1)
+                            && self.not_last(x, self.width);
+                        let link_down =
+                            rand::thread_rng().gen_range(0, 3) < 1 && self.not_last(y, self.height);
+                        InitialSquare {
+                            p: Point::from_usize(x, y),
+                            link_right,
+                            link_down,
+                        }
+                    })
+                    .collect()
             })
-            .collect::<Html>()
+            .collect();
+        let second_pass: Vec<Vec<_>> = first_pass
+            .iter()
+            .enumerate()
+            .map(|(i, line)| {
+                line.iter()
+                    .enumerate()
+                    .map(|(j, square)| WithLinksSquare {
+                        p: square.p,
+                        link_up: i > 0 && first_pass[i - 1][j].link_down,
+                        link_left: j > 0 && first_pass[i][j - 1].link_right,
+                        link_right: square.link_right,
+                        link_down: square.link_down,
+                    })
+                    .collect()
+            })
+            .collect();
+        let mut clusters: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
+        second_pass
+            .iter()
+            .enumerate()
+            .map(|(i, line)| {
+                line.iter()
+                    .enumerate()
+                    .map(|(j, square)| {
+                        let (cluster_id, cluster_size) =
+                            Self::calculate_cluster(&mut clusters, i, j, &second_pass);
+                        WithClustersSquare {
+                            p: square.p,
+                            link_up: i > 0 && first_pass[i - 1][j].link_down,
+                            link_left: j > 0 && first_pass[i][j - 1].link_right,
+                            link_right: square.link_right,
+                            link_down: square.link_down,
+                            cluster_id,
+                            cluster_size,
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn calculate_cluster(
+        clusters: &mut HashMap<(usize, usize), (usize, usize)>,
+        i: usize,
+        j: usize,
+        first_pass: &Vec<Vec<WithLinksSquare>>,
+    ) -> (usize, usize) {
+        let v = clusters.get(&(i, j));
+        match v {
+            Some((cluster_id, cluster_size)) => (*cluster_id, *cluster_size),
+            None => {
+                let mut cluster: HashSet<(usize, usize)> = HashSet::new();
+                Self::dfs_cluster(i, j, &first_pass, &mut cluster);
+                let cluster_size = cluster.len();
+                let cluster_id = clusters.keys().map(|(id, _size)| id).max().unwrap_or(&0) + 1;
+                for item in cluster {
+                    clusters.insert(item, (cluster_id, cluster_size));
+                }
+                (cluster_id, cluster_size)
+            }
+        }
+    }
+
+    fn dfs_cluster(
+        i: usize,
+        j: usize,
+        first_pass: &Vec<Vec<WithLinksSquare>>,
+        result: &mut HashSet<(usize, usize)>,
+    ) {
+        if !result.insert((i, j)) {
+            return;
+        }
+        if first_pass[i][j].link_right {
+            Self::dfs_cluster(i, j + 1, first_pass, result);
+        };
+        if first_pass[i][j].link_down {
+            Self::dfs_cluster(i + 1, j, first_pass, result);
+        }
+        if first_pass[i][j].link_up {
+            Self::dfs_cluster(i - 1, j, first_pass, result);
+        };
+        if first_pass[i][j].link_left {
+            Self::dfs_cluster(i, j - 1, first_pass, result);
+        }
+    }
+
+    fn not_last(&self, dimension: usize, max_dimension: usize) -> bool {
+        let last = (0..max_dimension - self.step)
+            .step_by(self.step)
+            .skip(1)
+            .last()
+            .unwrap();
+        dimension != last
     }
 
     fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
