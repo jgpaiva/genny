@@ -64,25 +64,20 @@ struct Square {
 
 impl Square {
     fn draw(&self) -> Html {
-        html! {
-            {
-                    html!{<use x=self.p.x y=self.p.y href="#square" fill="black" />}
-            }
-            /*{
-                if self.link_right {
-                   html!{ <use x=self.p.x y=self.p.y href="#right_link" fill="black" />}
-                } else {
-                    html!{}
-                }
-            }
-            {
-                if self.link_down {
-                    html!{<use x=self.p.x y=self.p.y href="#right_down" fill="black" />}
-                } else {
-                    html!{}
-                }
-            }*/
-        }
+        let square = html! { <use x=self.p.x y=self.p.y href="#square" fill="black" /> };
+        let link_right = if self.link_right {
+            html! { <use x=self.p.x y=self.p.y href="#link_right" fill="black" />}
+        } else {
+            html! {}
+        };
+        let link_down = if self.link_down {
+            html! {<use x=self.p.x y=self.p.y href="#link_down" fill="black" />}
+        } else {
+            html! {}
+        };
+        vec![square, link_right, link_down]
+            .into_iter()
+            .collect::<Html>()
     }
 }
 
@@ -201,6 +196,8 @@ impl Component for Model {
                         <circle id="myCircle" cx="0" cy="0" r="10" />
                         <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10" id="arrow" stroke="black" fill="transparent"/>
                         <path d="M 0 0 L 0 10 L 10 10 L 10 0 L 0 0" id="square" stroke="black" fill="black"/>
+                        <path d="M 10 3 L 10 7 L 14 7 L 14 3 L 10 3" id="link_right" stroke="black" fill="black"/>
+                        <path d="M 3 10 L 3 14 L 7 14 L 7 10 L 3 10" id="link_down" stroke="black" fill="black"/>
 
                         <linearGradient id="myGradient" gradientTransform="rotate(90)">
                             <stop offset="10%" stop-color="white" />
@@ -346,10 +343,12 @@ impl Model {
             .step_by(self.step)
             .skip(1)
             .map(|x| {
+                let link_down = rand::thread_rng().gen_range(0, 2) > 0;
+                let link_right = rand::thread_rng().gen_range(0, 2) > 0;
                 Square {
                     p: Point::from_usize(x, y),
-                    link_down: true,
-                    link_right: true,
+                    link_down,
+                    link_right,
                 }
                 .draw()
             })
