@@ -301,15 +301,15 @@ impl Component for Model {
                         <path d="M 8 1 L 8 9 L 16 9 L 16 1 L 9 1 Z" id="link_right" />
                         <path d="M 1 8 L 1 16 L 9 16 L 9 8 L 1 8 Z" id="link_down" />
 
-                        <path d="M 0 0 L 10 0 Z" id="closed_top" stroke-linecap="round"/>
-                        <path d="M 10 0 L 10 10 Z" id="closed_right" stroke-linecap="round"/>
-                        <path d="M 0 0 L 0 10 Z" id="closed_left" stroke-linecap="round"/>
-                        <path d="M 0 10 L 10 10 Z" id="closed_bottom" stroke-linecap="round"/>
+                        <path d="M 0 0 L 10 0" id="closed_top" stroke-linecap="round"/>
+                        <path d="M 10 0 L 10 10" id="closed_right" stroke-linecap="round"/>
+                        <path d="M 0 0 L 0 10" id="closed_left" stroke-linecap="round"/>
+                        <path d="M 0 10 L 10 10" id="closed_bottom" stroke-linecap="round"/>
 
-                        <path d="M 0 0 L 0 -5 Z" id="connection_up" stroke-linecap="square"/>
-                        <path d="M 10 0 L 15 0 Z" id="connection_right" stroke-linecap="square"/>
-                        <path d="M 0 10 L -5 10 Z" id="connection_left" stroke-linecap="square"/>
-                        <path d="M 10 10 L 10 15 Z" id="connection_down" stroke-linecap="square"/>
+                        <path d="M 0 0 L 0 -5" id="connection_up" stroke-linecap="round"/>
+                        <path d="M 10 0 L 15 0" id="connection_right" stroke-linecap="round"/>
+                        <path d="M 0 10 L -5 10" id="connection_left" stroke-linecap="round"/>
+                        <path d="M 10 10 L 10 15" id="connection_down" stroke-linecap="round"/>
 
                         <linearGradient id="myGradient" gradientTransform="rotate(90)">
                             <stop offset="10%" stop-color="white" />
