@@ -21,6 +21,7 @@ struct Model {
     height: usize,
     arrows_enabled: bool,
     paths_enabled: bool,
+    squares_enabled: bool,
     circles_enabled: bool,
     link: ComponentLink<Self>,
 }
@@ -29,6 +30,7 @@ enum Msg {
     ToggleArrows,
     TogglePaths,
     ToggleCircles,
+    ToggleSquares,
 }
 
 struct Circle {
@@ -52,6 +54,35 @@ impl Arrow {
 
     fn rad_to_deg(rad: f32) -> f32 {
         -((rad + std::f32::consts::PI * 0.5) * 180.0 / std::f32::consts::PI)
+    }
+}
+struct Square {
+    p: Point,
+    link_right: bool,
+    link_down: bool,
+}
+
+impl Square {
+    fn draw(&self) -> Html {
+        html! {
+            {
+                    html!{<use x=self.p.x y=self.p.y href="#square" fill="black" />}
+            }
+            /*{
+                if self.link_right {
+                   html!{ <use x=self.p.x y=self.p.y href="#right_link" fill="black" />}
+                } else {
+                    html!{}
+                }
+            }
+            {
+                if self.link_down {
+                    html!{<use x=self.p.x y=self.p.y href="#right_down" fill="black" />}
+                } else {
+                    html!{}
+                }
+            }*/
+        }
     }
 }
 
@@ -115,8 +146,9 @@ impl Component for Model {
             width: 500,
             height: 500,
             step: 15,
-            arrows_enabled: true,
+            arrows_enabled: false,
             paths_enabled: false,
+            squares_enabled: true,
             circles_enabled: false,
         }
     }
@@ -125,6 +157,7 @@ impl Component for Model {
         match msg {
             Msg::ToggleArrows => self.arrows_enabled = !self.arrows_enabled,
             Msg::TogglePaths => self.paths_enabled = !self.paths_enabled,
+            Msg::ToggleSquares => self.squares_enabled = !self.squares_enabled,
             Msg::ToggleCircles => self.circles_enabled = !self.circles_enabled,
         }
         true
@@ -154,6 +187,7 @@ impl Component for Model {
                 .collect::<Vec<UsizePoint>>()
         })
         .collect::<Vec<UsizePoint>>();*/
+
         html! {
             <div class="container">
                 <h1> { "ahoy!" } </h1>
@@ -166,12 +200,20 @@ impl Component for Model {
                     <defs>
                         <circle id="myCircle" cx="0" cy="0" r="10" />
                         <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10" id="arrow" stroke="black" fill="transparent"/>
+                        <path d="M 0 0 L 0 10 L 10 10 L 10 0 L 0 0" id="square" stroke="black" fill="black"/>
 
                         <linearGradient id="myGradient" gradientTransform="rotate(90)">
                             <stop offset="10%" stop-color="white" />
                             <stop offset="90%" stop-color="gold" />
                         </linearGradient>
                     </defs>
+                    {
+                        if self.squares_enabled {
+                            self.render_squares()
+                        } else{
+                            html!{}
+                        }
+                    }
                     {
                         if self.arrows_enabled {
                             self.render_arrows()
@@ -213,11 +255,20 @@ impl Component for Model {
                 <br/>
                 <input
                     type="checkbox"
+                    id="toggle_squares"
+                    checked=self.squares_enabled
+                    onclick=self.link.callback(|_| Msg::ToggleSquares)
+                />
+                {" render squares" }
+                <br/>
+                <input
+                    type="checkbox"
                     id="toggle_paths"
                     checked=self.paths_enabled
                     onclick=self.link.callback(|_| Msg::TogglePaths)
                 />
                 {" render paths" }
+                <br/>
             </div>
         }
     }
@@ -261,15 +312,48 @@ impl Model {
     }
 
     fn render_arrows(&self) -> Html {
-        html! {{
-            (0..self.height-self.step).step_by(self.step).skip(1).map(|y| self.render_arrow_line(y)).collect::<Html>()
-        }}
+        (0..self.height - self.step)
+            .step_by(self.step)
+            .skip(1)
+            .map(|y| self.render_arrow_line(y))
+            .collect::<Html>()
     }
 
     fn render_arrow_line(&self, y: usize) -> Html {
-        html! {{
-            (0..self.width-self.step).step_by(self.step).skip(1).map(|x| Arrow{ p: Point::from_usize(x,y),angle: self.angle_at(Point::from_usize(x,y))}.draw()).collect::<Html>()
-        }}
+        (0..self.width - self.step)
+            .step_by(self.step)
+            .skip(1)
+            .map(|x| {
+                Arrow {
+                    p: Point::from_usize(x, y),
+                    angle: self.angle_at(Point::from_usize(x, y)),
+                }
+                .draw()
+            })
+            .collect::<Html>()
+    }
+
+    fn render_squares(&self) -> Html {
+        (0..self.height - self.step)
+            .step_by(self.step)
+            .skip(1)
+            .map(|y| self.render_square_line(y))
+            .collect::<Html>()
+    }
+
+    fn render_square_line(&self, y: usize) -> Html {
+        (0..self.width - self.step)
+            .step_by(self.step)
+            .skip(1)
+            .map(|x| {
+                Square {
+                    p: Point::from_usize(x, y),
+                    link_down: true,
+                    link_right: true,
+                }
+                .draw()
+            })
+            .collect::<Html>()
     }
 
     fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
@@ -280,7 +364,7 @@ impl Model {
             let p = Point { x, y };
             let mut matching_circles = circles
                 .iter()
-                .filter(|(c, _)| self.in_circle(&p, &c, diameter));
+                .filter(|(c, _)| self.in_circle(&p, c, diameter));
 
             if matching_circles.next().is_none() {
                 log!("worked at {}", i);
@@ -395,7 +479,7 @@ impl Model {
                 y: last_point.y + angle.sin() * self.step as f32,
             };
             acc.items.push(next_point);
-            return (acc, next_point);
+            (acc, next_point)
         });
         val.0
     }
