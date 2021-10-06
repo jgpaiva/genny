@@ -332,9 +332,9 @@ impl Component for Model {
                     <defs>
                         <circle id="myCircle" cx="0" cy="0" r="10" />
                         <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10 Z" id="arrow" stroke="black" fill="transparent"/>
-                        <path d="M 0 0 L 0 10 L 10 10 L 10 0 L 0 0 Z" id="square"/>
-                        <path d="M 8 0 L 8 10 L 16 10 L 16 0 L 10 0 Z" id="link_right" />
-                        <path d="M 0 8 L 0 16 L 10 16 L 10 8 L 0 8 Z" id="link_down" />
+                        <rect x="0" y="0" width="10" height="10" rx="3" ry ="3" id="square"/>
+                        <path d="M 7 0 L 7 10 L 17 10 L 17 0 L 10 0 Z" id="link_right" />
+                        <path d="M 0 7 L 0 17 L 10 17 L 10 7 L 0 7 Z" id="link_down" />
 
                         <path d="M 0 0 L 10 0" id="closed_top" stroke-linecap="round"/>
                         <path d="M 10 0 L 10 10" id="closed_right" stroke-linecap="round"/>
@@ -382,11 +382,13 @@ impl Component for Model {
                 </svg>
                 <br/>
                 {"Select theme: " }
+                <br/>
                 {
                     self.render_color_options()
                 }
                 <br/>
                 {"Select variant: " }
+                <br/>
                 {
                     self.render_variant_options()
                 }
@@ -525,7 +527,7 @@ impl Model {
         squares
             .iter()
             .map(|line| {
-                line.into_iter()
+                line.iter()
                     .map(|square| {
                         square.draw(
                             &squares,
@@ -612,7 +614,7 @@ impl Model {
             Some((cluster_id, cluster_size)) => (*cluster_id, *cluster_size),
             None => {
                 let mut cluster: HashSet<(usize, usize)> = HashSet::new();
-                Self::dfs_cluster(i, j, &first_pass, &mut cluster);
+                Self::dfs_cluster(i, j, first_pass, &mut cluster);
                 let cluster_size = cluster.len();
                 let cluster_id = clusters.keys().map(|(id, _size)| id).max().unwrap_or(&0) + 1;
                 for item in cluster {
