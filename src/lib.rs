@@ -27,6 +27,7 @@ struct Model {
     squares_enabled: bool,
     circles_enabled: bool,
     color_scheme: String,
+    variant: Variant,
     link: ComponentLink<Self>,
 }
 
@@ -34,23 +35,23 @@ impl Model {
     fn colors(&self) -> HashMap<String, Vec<String>> {
         vec![
             (
-                "bluish_colors",
+                "bluish",
                 vec!["#CDC392", "#E8E5DA", "#9EB7E5", "#648DE5", "#304C89"],
             ),
             (
-                "tropical_colors",
+                "tropical",
                 vec!["#BF3100", "#8EA604", "#D76A03", "#EC9F05", "#F5BB00"],
             ),
             (
-                "accented_colors",
+                "accented",
                 vec!["#011627", "#D5CAD6", "#2EC4B6", "#E71D36", "#FF9F1C"],
             ),
             (
-                "pastel_colors",
+                "pastel",
                 vec!["#1A535C", "#4ECDC4", "#721817", "#FF6B6B", "#F49D37"],
             ),
             (
-                "red_colors",
+                "reddish",
                 vec!["#370617", "#DC2F02", "#F48C06", "#FFBA08", "#9D0208"],
             ),
         ]
@@ -71,6 +72,7 @@ enum Msg {
     ToggleCircles,
     ToggleSquares,
     UpdateColor(yew::ChangeData),
+    UpdateVariant(yew::ChangeData),
 }
 
 struct Circle {
@@ -119,9 +121,19 @@ struct WithClustersSquare {
     cluster_id: usize,
     cluster_size: usize,
 }
+#[derive(Clone, Copy)]
+enum Variant {
+    Outline,
+    Filled,
+}
 
 impl WithClustersSquare {
-    fn draw(&self, squares: &Vec<Vec<WithClustersSquare>>, colors: &Vec<String>) -> Html {
+    fn draw(
+        &self,
+        squares: &Vec<Vec<WithClustersSquare>>,
+        colors: &Vec<String>,
+        variant: Variant,
+    ) -> Html {
         let max_cluster_size = squares
             .iter()
             .flatten()
@@ -139,40 +151,48 @@ impl WithClustersSquare {
         } else {
             colors[3].to_owned()
         };
-        let square = html! { <use x=self.p.x y=self.p.y href="#square" stroke=color fill=color/>};
-        let link_right = if self.link_right {
-            html! { <use x=self.p.x y=self.p.y href="#link_right" stroke=color fill=color/>}
-        } else {
-            html! {}
-        };
-        let link_down = if self.link_down {
-            html! {<use x=self.p.x y=self.p.y href="#link_down" stroke=color fill=color/>}
-        } else {
-            html! {}
-        };
-        let top = if self.link_up {
-            html! {<use x=self.p.x y=self.p.y href="#connection_up" stroke = color/>}
-        } else {
-            html! {<use x=self.p.x y=self.p.y href="#closed_top"  stroke = color/>}
-        };
-        let right = if self.link_right {
-            html! {<use x=self.p.x y=self.p.y href="#connection_right" stroke = color/>}
-        } else {
-            html! {<use x=self.p.x y=self.p.y href="#closed_right" stroke = color/>}
-        };
-        let left = if self.link_left {
-            html! {<use x=self.p.x y=self.p.y href="#connection_left" stroke = color/>}
-        } else {
-            html! {<use x=self.p.x y=self.p.y href="#closed_left" stroke = color/>}
-        };
-        let bottom = if self.link_down {
-            html! {<use x=self.p.x y=self.p.y href="#connection_down" stroke = color/>}
-        } else {
-            html! {<use x=self.p.x y=self.p.y href="#closed_bottom" stroke = color/>}
-        };
-        vec![square, link_right, link_down]
-            .into_iter()
-            .collect::<Html>()
+        match variant {
+            Variant::Filled => {
+                let square =
+                    html! { <use x=self.p.x y=self.p.y href="#square" stroke=color fill=color/>};
+                let link_right = if self.link_right {
+                    html! { <use x=self.p.x y=self.p.y href="#link_right" stroke=color fill=color/>}
+                } else {
+                    html! {}
+                };
+                let link_down = if self.link_down {
+                    html! {<use x=self.p.x y=self.p.y href="#link_down" stroke=color fill=color/>}
+                } else {
+                    html! {}
+                };
+                vec![square, link_right, link_down]
+            }
+            Variant::Outline => {
+                let top = if self.link_up {
+                    html! {<use x=self.p.x y=self.p.y href="#connection_up" stroke = color/>}
+                } else {
+                    html! {<use x=self.p.x y=self.p.y href="#closed_top"  stroke = color/>}
+                };
+                let right = if self.link_right {
+                    html! {<use x=self.p.x y=self.p.y href="#connection_right" stroke = color/>}
+                } else {
+                    html! {<use x=self.p.x y=self.p.y href="#closed_right" stroke = color/>}
+                };
+                let left = if self.link_left {
+                    html! {<use x=self.p.x y=self.p.y href="#connection_left" stroke = color/>}
+                } else {
+                    html! {<use x=self.p.x y=self.p.y href="#closed_left" stroke = color/>}
+                };
+                let bottom = if self.link_down {
+                    html! {<use x=self.p.x y=self.p.y href="#connection_down" stroke = color/>}
+                } else {
+                    html! {<use x=self.p.x y=self.p.y href="#closed_bottom" stroke = color/>}
+                };
+                vec![top, left, right, bottom]
+            }
+        }
+        .into_iter()
+        .collect::<Html>()
     }
 }
 
@@ -240,7 +260,8 @@ impl Component for Model {
             paths_enabled: false,
             squares_enabled: true,
             circles_enabled: false,
-            color_scheme: "accented_colors".to_owned(),
+            variant: Variant::Outline,
+            color_scheme: "accented".to_owned(),
         }
     }
 
@@ -256,6 +277,20 @@ impl Component for Model {
                     _ => unreachable!(),
                 };
                 self.color_scheme = color_scheme;
+            }
+            Msg::UpdateVariant(cd) => {
+                let variant = match cd {
+                    ChangeData::Select(se) => se.value(),
+                    _ => unreachable!(),
+                };
+                let variant = if variant == "Outline" {
+                    Variant::Outline
+                } else if variant == "Filled" {
+                    Variant::Filled
+                } else {
+                    unreachable!()
+                };
+                self.variant = variant;
             }
         }
         true
@@ -351,6 +386,11 @@ impl Component for Model {
                     self.render_color_options()
                 }
                 <br/>
+                {"Select variant: " }
+                {
+                    self.render_variant_options()
+                }
+                <br/>
                 /*
                 <input
                     type="checkbox"
@@ -443,6 +483,21 @@ impl Model {
         }
     }
 
+    fn render_variant_options(&self) -> Html {
+        html! {
+            <select name="variants" id="variants" onchange=self.link.callback(|cd| Msg::UpdateVariant(cd))>
+            {{
+                let mut variants:Vec<String> = vec!["Outline".to_owned(),"Filled".to_owned()];
+                variants.iter().map(|variant|{
+                    html!{
+                        <option value=variant>{variant}</option>
+                    }
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
     fn render_arrows(&self) -> Html {
         (0..self.height - self.step)
             .step_by(self.step)
@@ -472,7 +527,11 @@ impl Model {
             .map(|line| {
                 line.into_iter()
                     .map(|square| {
-                        square.draw(&squares, self.colors().get(&self.color_scheme).unwrap())
+                        square.draw(
+                            &squares,
+                            self.colors().get(&self.color_scheme).unwrap(),
+                            self.variant,
+                        )
                     })
                     .collect::<Html>()
             })
