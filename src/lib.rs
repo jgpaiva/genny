@@ -170,7 +170,7 @@ impl WithClustersSquare {
         } else {
             html! {<use x=self.p.x y=self.p.y href="#closed_bottom" stroke = color/>}
         };
-        vec![top, left, right, bottom, square, link_right, link_down]
+        vec![square, link_right, link_down]
             .into_iter()
             .collect::<Html>()
     }
@@ -297,9 +297,9 @@ impl Component for Model {
                     <defs>
                         <circle id="myCircle" cx="0" cy="0" r="10" />
                         <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10 Z" id="arrow" stroke="black" fill="transparent"/>
-                        <path d="M 1 1 L 1 9 L 9 9 L 9 1 L 1 1 Z" id="square"/>
-                        <path d="M 8 1 L 8 9 L 16 9 L 16 1 L 9 1 Z" id="link_right" />
-                        <path d="M 1 8 L 1 16 L 9 16 L 9 8 L 1 8 Z" id="link_down" />
+                        <path d="M 0 0 L 0 10 L 10 10 L 10 0 L 0 0 Z" id="square"/>
+                        <path d="M 8 0 L 8 10 L 16 10 L 16 0 L 10 0 Z" id="link_right" />
+                        <path d="M 0 8 L 0 16 L 10 16 L 10 8 L 0 8 Z" id="link_down" />
 
                         <path d="M 0 0 L 10 0" id="closed_top" stroke-linecap="round"/>
                         <path d="M 10 0 L 10 10" id="closed_right" stroke-linecap="round"/>
