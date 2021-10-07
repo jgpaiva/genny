@@ -20,14 +20,13 @@ macro_rules! log {
 
 struct Model {
     step: usize,
-    width: usize,
-    height: usize,
     arrows_enabled: bool,
     paths_enabled: bool,
     squares_enabled: bool,
     circles_enabled: bool,
     color_scheme: String,
     variant: Variant,
+    size: Size,
     link: ComponentLink<Self>,
 }
 
@@ -73,6 +72,7 @@ enum Msg {
     ToggleSquares,
     UpdateColor(yew::ChangeData),
     UpdateVariant(yew::ChangeData),
+    UpdateSize(yew::ChangeData),
 }
 
 struct Circle {
@@ -121,10 +121,18 @@ struct WithClustersSquare {
     cluster_id: usize,
     cluster_size: usize,
 }
+
 #[derive(Clone, Copy)]
 enum Variant {
     Outline,
     Filled,
+}
+
+#[derive(Clone, Copy)]
+enum Size {
+    Small,
+    Medium,
+    Large,
 }
 
 impl WithClustersSquare {
@@ -253,14 +261,13 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
             link,
-            width: 170,
-            height: 170,
             step: 15,
             arrows_enabled: false,
             paths_enabled: false,
             squares_enabled: true,
             circles_enabled: false,
-            variant: Variant::Outline,
+            variant: Variant::Filled,
+            size: Size::Small,
             color_scheme: "accented".to_owned(),
         }
     }
@@ -291,6 +298,22 @@ impl Component for Model {
                     unreachable!()
                 };
                 self.variant = variant;
+            }
+            Msg::UpdateSize(cd) => {
+                let variant = match cd {
+                    ChangeData::Select(se) => se.value(),
+                    _ => unreachable!(),
+                };
+                let size = if variant == "Small" {
+                    Size::Small
+                } else if variant == "Medium" {
+                    Size::Medium
+                } else if variant == "Large" {
+                    Size::Large
+                } else {
+                    unreachable!()
+                };
+                self.size = size;
             }
         }
         true
@@ -324,9 +347,7 @@ impl Component for Model {
         html! {
             <div class="container">
                 <svg
-                    width={self.width}
-                    height={self.height}
-                    viewBox={format!("0 0 {} {}", self.width, self.height)}
+                    viewBox={format!("0 0 {} {}", self.getWidth(), self.getHeight())}
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -380,19 +401,27 @@ impl Component for Model {
                         }
                     }
                 </svg>
-                <br/>
-                {"Select theme: " }
+                <div>
+                {"Choose theme: " }
                 <br/>
                 {
                     self.render_color_options()
                 }
-                <br/>
-                {"Select variant: " }
+                </div>
+                <div>
+                {"Choose variant: " }
                 <br/>
                 {
                     self.render_variant_options()
                 }
+                </div>
+                <div>
+                {"Choose size: " }
                 <br/>
+                {
+                    self.render_size_options()
+                }
+                </div>
                 /*
                 <input
                     type="checkbox"
@@ -432,11 +461,24 @@ impl Component for Model {
 }
 
 impl Model {
+    fn getWidth(&self) -> usize {
+        let base_size = 170;
+        match self.size {
+            Size::Small => base_size * 2,
+            Size::Medium => base_size * 4,
+            Size::Large => base_size * 8,
+        }
+    }
+
+    fn getHeight(&self) -> usize {
+        self.getWidth()
+    }
+
     fn random_point(&self, points: &Vec<UsizePoint>) -> UsizePoint {
         let mut i = 0;
         loop {
-            let x = rand::thread_rng().gen_range(0, self.width);
-            let y = rand::thread_rng().gen_range(0, self.height);
+            let x = rand::thread_rng().gen_range(0, self.getWidth());
+            let y = rand::thread_rng().gen_range(0, self.getHeight());
             let p = UsizePoint { x, y };
             if !points.contains(&p) {
                 log!("worked at {}", i);
@@ -451,19 +493,19 @@ impl Model {
 
     fn border_point(&self, i: usize) -> UsizePoint {
         UsizePoint {
-            x: if i < 2 * self.width {
-                i % self.width
-            } else if i < 2 * self.width + self.height {
+            x: if i < 2 * self.getWidth() {
+                i % self.getWidth()
+            } else if i < 2 * self.getWidth() + self.getHeight() {
                 0
             } else {
-                self.width - 1
+                self.getWidth() - 1
             },
-            y: if i < self.width {
+            y: if i < self.getWidth() {
                 0
-            } else if i < 2 * self.width {
-                self.height - 1
+            } else if i < 2 * self.getWidth() {
+                self.getHeight() - 1
             } else {
-                (i - 2 * self.width) % self.height
+                (i - 2 * self.getWidth()) % self.getHeight()
             },
         }
     }
@@ -489,7 +531,7 @@ impl Model {
         html! {
             <select name="variants" id="variants" onchange=self.link.callback(|cd| Msg::UpdateVariant(cd))>
             {{
-                let mut variants:Vec<String> = vec!["Outline".to_owned(),"Filled".to_owned()];
+                let mut variants:Vec<String> = vec!["Filled".to_owned(), "Outline".to_owned()];
                 variants.iter().map(|variant|{
                     html!{
                         <option value=variant>{variant}</option>
@@ -500,8 +542,23 @@ impl Model {
         }
     }
 
+    fn render_size_options(&self) -> Html {
+        html! {
+            <select name="sizes" id="sizes" onchange=self.link.callback(|cd| Msg::UpdateSize(cd))>
+            {{
+                let mut sizes:Vec<String> = vec!["Small".to_owned(), "Medium".to_owned(), "Large".to_owned()];
+                sizes.iter().map(|size|{
+                    html!{
+                        <option value=size>{size}</option>
+                    }
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
     fn render_arrows(&self) -> Html {
-        (0..self.height - self.step)
+        (0..self.getHeight() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|y| self.render_arrow_line(y))
@@ -509,7 +566,7 @@ impl Model {
     }
 
     fn render_arrow_line(&self, y: usize) -> Html {
-        (0..self.width - self.step)
+        (0..self.getWidth() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|x| {
@@ -541,18 +598,18 @@ impl Model {
     }
 
     fn create_squares(&self) -> Vec<Vec<WithClustersSquare>> {
-        let first_pass: Vec<Vec<_>> = (0..self.height - self.step)
+        let first_pass: Vec<Vec<_>> = (0..self.getHeight() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|y| {
-                (0..self.width - self.step)
+                (0..self.getWidth() - self.step)
                     .step_by(self.step)
                     .skip(1)
                     .map(|x| {
                         let link_right = (rand::thread_rng().gen_range(0, 3) < 1)
-                            && self.not_last(x, self.width);
-                        let link_down =
-                            rand::thread_rng().gen_range(0, 3) < 1 && self.not_last(y, self.height);
+                            && self.not_last(x, self.getWidth());
+                        let link_down = rand::thread_rng().gen_range(0, 3) < 1
+                            && self.not_last(y, self.getHeight());
                         InitialSquare {
                             p: Point::from_usize(x, y),
                             link_right,
@@ -660,8 +717,8 @@ impl Model {
     fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
         let mut i = 0;
         loop {
-            let x = rand::thread_rng().gen_range(0, self.width) as f32;
-            let y = rand::thread_rng().gen_range(0, self.height) as f32;
+            let x = rand::thread_rng().gen_range(0, self.getWidth()) as f32;
+            let y = rand::thread_rng().gen_range(0, self.getHeight()) as f32;
             let p = Point { x, y };
             let mut matching_circles = circles
                 .iter()
@@ -723,10 +780,10 @@ impl Model {
     }
 
     fn render_paths(&self) -> Vec<Html> {
-        let num_paths = (0.05 * ((self.width * self.height) as f32)) as usize;
+        let num_paths = (0.05 * ((self.getWidth() * self.getHeight()) as f32)) as usize;
         let mut all_points = Vec::new();
         let circles = self.circles();
-        let borders = (self.width + self.height) * 2;
+        let borders = (self.getWidth() + self.getHeight()) * 2;
         (0..(num_paths + borders)).fold(Vec::new(), |mut acc, i| {
             let point = if i < borders {
                 self.border_point(i)
@@ -739,7 +796,7 @@ impl Model {
             for p in item.items {
                 let x = p.x as u32;
                 let y = p.y as u32;
-                if x < self.width as u32 && y < self.height as u32 {
+                if x < self.getWidth() as u32 && y < self.getHeight() as u32 {
                     let x = usize::try_from(x).unwrap();
                     let y = usize::try_from(y).unwrap();
                     all_points.push(UsizePoint { x, y });
@@ -769,7 +826,7 @@ impl Model {
             x: p.x as f32,
             y: p.y as f32,
         };
-        let length = (self.width + self.height) / 200;
+        let length = (self.getWidth() + self.getHeight()) / 200;
         let path = Path {
             items: vec![start_point],
         };
@@ -792,7 +849,7 @@ impl Model {
     fn modify_angle_at(&self, p: Point, angle: f32) -> f32 {
         let max_effect_point = Point { x: 250.0, y: 250.0 };
         let distance = p.distance_to(&max_effect_point) * 4.0;
-        let factor = 1.0 / ((distance / self.width as f32).powf(2.0) + 1.0);
+        let factor = 1.0 / ((distance / self.getWidth() as f32).powf(2.0) + 1.0);
         //log!(
         //    "point is {:?}, distance is {}, factor is {}",
         //    p,
@@ -811,8 +868,8 @@ impl Model {
     }
 
     fn zero_to_one_flow_field(&self, p: Point) -> f32 {
-        let height = self.height as f32;
-        let width = self.width as f32;
+        let height = self.getHeight() as f32;
+        let width = self.getWidth() as f32;
         let x = width / ((p.x - 0.5 * width) * 0.2 - width)
             - ((p.x - 0.5 * width) * 2.0 - width * 0.5) / width;
         let y = p.y * p.y - height * height * 0.7;
