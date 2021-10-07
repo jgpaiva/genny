@@ -1,69 +1,30 @@
 <div align="center">
 
-  <h1><code>wasm-pack-template</code></h1>
+  <h1><code>Genny</code></h1>
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
-
-  <p>
-    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
-  </p>
-
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
-
-  <sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
+  <strong>A playground for creating generative art, buit with Rust🦀 and WASM🕸</strong>
 </div>
 
 ## About
 
-[**📚 Read this template tutorial! 📚**][template-docs]
+This is a simple playground that allows me to explore ideas around generative art. Currently it generates images similar to the following:
 
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
+<img src="imgs/demo.png" alt="demo of Genny" width="200"/>
 
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
+It supports some basic level of customization (theme, size), and every time you change settings or reload the page, a new image is generated.
 
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
+<h2><strong>You can play with it <a href="https://jgpaiva.github.io/genie/">here</a>.</strong></h2>
 
 ## 🚴 Usage
 
-### 🐑 Use `cargo generate` to Clone this Template
-
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
-
+If you'd like to play with the dev version, all you need to do is clone this repo, and then run the following two commands in two separate terminals:
 ```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
+./start_auto_build.sh
 ```
-
-### 🛠️ Build with `wasm-pack build`
-
+This will start an auto-build, that'll rebuild the project everytime you make a change. (Depends on having `entr` and `wasm-pack` installed on the local machine)
 ```
-wasm-pack build
+./start_dev_server.sh
 ```
+This'll start an auto-refresh browser window, which will refresh the page everytime there's a change to the build.
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
-
-```
-wasm-pack test --headless --firefox
-```
-
-### 🎁 Publish to NPM with `wasm-pack publish`
-
-```
-wasm-pack publish
-```
-
-## 🔋 Batteries Included
-
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* [`wee_alloc`](https://github.com/rustwasm/wee_alloc), an allocator optimized
-  for small code size.
+As long as you have these two commands running, you'll see realtime updates of the page as soon as you change and save a file, to get a really short feedback cycle between change and outcome.

@@ -1,3 +1,3 @@
-import * as wasm from "torename";
+import * as wasm from "genny";
 
 wasm.run_app();
