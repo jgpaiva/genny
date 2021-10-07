@@ -28,3 +28,5 @@ This will start an auto-build, that'll rebuild the project everytime you make a 
 This'll start an auto-refresh browser window, which will refresh the page everytime there's a change to the build.
 
 As long as you have these two commands running, you'll see realtime updates of the page as soon as you change and save a file, to get a really short feedback cycle between change and outcome.
+
+To release to github pages, run `./release`, add the newly generated files, and push to github.

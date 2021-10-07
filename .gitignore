@@ -7,3 +7,4 @@ wasm-pack.log
 www/node_modules
 www/dist
 .vscode
+.cargo-ok
