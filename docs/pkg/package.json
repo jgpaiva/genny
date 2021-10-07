@@ -1,0 +1,14 @@
+{
+  "name": "genny",
+  "collaborators": [
+    "João Paiva <jgpaiva@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "genny_bg.wasm",
+    "genny.js",
+    "genny.d.ts"
+  ],
+  "browser": "genny.js",
+  "types": "genny.d.ts"
+}

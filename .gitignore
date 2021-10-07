@@ -1,10 +1,10 @@
 /target
 **/*.rs.bk
 Cargo.lock
-bin/
-pkg/
+/bin/
+/pkg/
 wasm-pack.log
-www/node_modules
-www/dist
+/www/node_modules
+/www/dist
 .vscode
 .cargo-ok
