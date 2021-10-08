@@ -470,9 +470,9 @@ impl Model {
     fn get_width(&self) -> usize {
         let base_size = 170;
         match self.size {
-            Size::Small => base_size * 2,
-            Size::Medium => base_size * 4,
-            Size::Large => base_size * 8,
+            Size::Small => base_size,
+            Size::Medium => base_size * 2,
+            Size::Large => base_size * 4,
         }
     }
 
