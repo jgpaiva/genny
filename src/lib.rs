@@ -4,6 +4,8 @@ use rand::Rng;
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
+    error::Error,
+    str::FromStr,
 };
 use wasm_bindgen::prelude::*;
 use yew::{
@@ -58,7 +60,7 @@ impl Default for ModelProperties {
 }
 
 impl Model {
-    fn colors(&self) -> HashMap<String, Vec<String>> {
+    fn colors() -> HashMap<String, Vec<String>> {
         vec![
             (
                 "bluish",
@@ -155,11 +157,60 @@ enum Variant {
     Filled,
 }
 
+impl ToString for Variant {
+    fn to_string(&self) -> String {
+        match self {
+            Variant::Outline => "Outline".to_owned(),
+            Variant::Filled => "Filled".to_owned(),
+        }
+    }
+}
+
+impl FromStr for Variant {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "Outline" {
+            Ok(Variant::Outline)
+        } else if s == "Filled" {
+            Ok(Variant::Filled)
+        } else {
+            Err(format!("Could not parse Variant from str: {}", s))
+        }
+    }
+}
+
 #[derive(Clone, Copy, Serialize, Deserialize)]
 enum Size {
     Small,
     Medium,
     Large,
+}
+
+impl ToString for Size {
+    fn to_string(&self) -> String {
+        match self {
+            Size::Small => "Small".to_owned(),
+            Size::Medium => "Medium".to_owned(),
+            Size::Large => "Large".to_owned(),
+        }
+    }
+}
+
+impl FromStr for Size {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "Small" {
+            Ok(Size::Small)
+        } else if s == "Medium" {
+            Ok(Size::Medium)
+        } else if s == "Large" {
+            Ok(Size::Large)
+        } else {
+            Err(format!("Could not parse size from str: {}", s))
+        }
+    }
 }
 
 impl WithClustersSquare {
@@ -298,6 +349,11 @@ impl Component for Model {
             }
         }
         .unwrap_or_default();
+        let p = if let Some(_) = Model::colors().get(&p.color_scheme) {
+            p
+        } else {
+            ModelProperties::default()
+        };
 
         Self { link, p: p }
     }
@@ -563,12 +619,18 @@ impl Model {
         html! {
             <select name="colors" id="colors" onchange=self.link.callback(|cd| Msg::UpdateColor(cd))>
             {{
-                let self_colors = self.colors();
+                let self_colors = Self::colors();
                 let mut colors:Vec<_> = self_colors.keys().collect();
                 colors.sort();
-                colors.iter().map(|color_name|{
-                    html!{
-                        <option value=color_name>{color_name}</option>
+                colors.into_iter().map(|color_name|{
+                    if self.p.color_scheme == *color_name {
+                        html!{
+                            <option value=color_name selected=true>{color_name}</option>
+                        }
+                    } else {
+                        html!{
+                            <option value=color_name>{color_name}</option>
+                        }
                     }
                 }).collect::<Html>()
             }}
@@ -580,10 +642,12 @@ impl Model {
         html! {
             <select name="variants" id="variants" onchange=self.link.callback(|cd| Msg::UpdateVariant(cd))>
             {{
-                let mut variants:Vec<String> = vec!["Filled".to_owned(), "Outline".to_owned()];
+                let mut variants:Vec<String> = vec![Variant::Filled.to_string(), Variant::Outline.to_string()];
                 variants.iter().map(|variant|{
-                    html!{
-                        <option value=variant>{variant}</option>
+                    if self.p.variant.to_string() == *variant {
+                        html!{<option value=variant selected= true>{variant}</option>}
+                    } else {
+                        html!{<option value=variant>{variant}</option>}
                     }
                 }).collect::<Html>()
             }}
@@ -595,10 +659,13 @@ impl Model {
         html! {
             <select name="sizes" id="sizes" onchange=self.link.callback(|cd| Msg::UpdateSize(cd))>
             {{
-                let mut sizes:Vec<String> = vec!["Small".to_owned(), "Medium".to_owned(), "Large".to_owned()];
+                let mut sizes:Vec<String> = vec![Size::Small.to_string(), Size::Medium.to_string(), Size::Large.to_string()];
                 sizes.iter().map(|size|{
-                    html!{
-                        <option value=size>{size}</option>
+                    if self.p.size.to_string() == *size {
+                        html!{<option value=size selected=true>{size}</option>}
+                    }else {
+                        html!{<option value=size>{size}</option>}
+
                     }
                 }).collect::<Html>()
             }}
@@ -637,7 +704,7 @@ impl Model {
                     .map(|square| {
                         square.draw(
                             &squares,
-                            self.colors().get(&self.p.color_scheme).unwrap(),
+                            Self::colors().get(&self.p.color_scheme).unwrap(),
                             self.p.variant,
                         )
                     })
