@@ -6,10 +6,15 @@ use std::{
     convert::TryFrom,
 };
 use wasm_bindgen::prelude::*;
-use yew::prelude::*;
+use yew::{
+    format::Json,
+    prelude::*,
+    services::{storage::Area, StorageService},
+};
 extern crate console_error_panic_hook;
 use std::panic;
 extern crate web_sys;
+use serde::{Deserialize, Serialize};
 
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
 macro_rules! log {
@@ -18,7 +23,15 @@ macro_rules! log {
     }
 }
 
+const STORAGE_KEY: &'static str = "yew.genny.database";
+
 struct Model {
+    p: ModelProperties,
+    link: ComponentLink<Self>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ModelProperties {
     step: usize,
     arrows_enabled: bool,
     paths_enabled: bool,
@@ -27,7 +40,21 @@ struct Model {
     color_scheme: String,
     variant: Variant,
     size: Size,
-    link: ComponentLink<Self>,
+}
+
+impl Default for ModelProperties {
+    fn default() -> Self {
+        Self {
+            step: 15,
+            arrows_enabled: false,
+            paths_enabled: false,
+            squares_enabled: true,
+            circles_enabled: false,
+            variant: Variant::Filled,
+            size: Size::Small,
+            color_scheme: "accented".to_owned(),
+        }
+    }
 }
 
 impl Model {
@@ -122,13 +149,13 @@ struct WithClustersSquare {
     cluster_size: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum Variant {
     Outline,
     Filled,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum Size {
     Small,
     Medium,
@@ -259,31 +286,34 @@ impl Component for Model {
     type Message = Msg;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            step: 15,
-            arrows_enabled: false,
-            paths_enabled: false,
-            squares_enabled: true,
-            circles_enabled: false,
-            variant: Variant::Filled,
-            size: Size::Small,
-            color_scheme: "accented".to_owned(),
+        let storage = StorageService::new(Area::Local);
+        let p = match storage {
+            Ok(storage) => {
+                let Json(v) = storage.restore(STORAGE_KEY);
+                v
+            }
+            Err(msg) => {
+                log!("couldn't instantiate storage {}", msg);
+                Ok(ModelProperties::default())
+            }
         }
+        .unwrap_or_default();
+
+        Self { link, p: p }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::ToggleArrows => self.arrows_enabled = !self.arrows_enabled,
-            Msg::TogglePaths => self.paths_enabled = !self.paths_enabled,
-            Msg::ToggleSquares => self.squares_enabled = !self.squares_enabled,
-            Msg::ToggleCircles => self.circles_enabled = !self.circles_enabled,
+            Msg::ToggleArrows => self.p.arrows_enabled = !self.p.arrows_enabled,
+            Msg::TogglePaths => self.p.paths_enabled = !self.p.paths_enabled,
+            Msg::ToggleSquares => self.p.squares_enabled = !self.p.squares_enabled,
+            Msg::ToggleCircles => self.p.circles_enabled = !self.p.circles_enabled,
             Msg::UpdateColor(cd) => {
                 let color_scheme = match cd {
                     ChangeData::Select(se) => se.value(),
                     _ => unreachable!(),
                 };
-                self.color_scheme = color_scheme;
+                self.p.color_scheme = color_scheme;
             }
             Msg::UpdateVariant(cd) => {
                 let variant = match cd {
@@ -297,7 +327,7 @@ impl Component for Model {
                 } else {
                     unreachable!()
                 };
-                self.variant = variant;
+                self.p.variant = variant;
             }
             Msg::UpdateSize(cd) => {
                 let variant = match cd {
@@ -313,8 +343,15 @@ impl Component for Model {
                 } else {
                     unreachable!()
                 };
-                self.size = size;
+                self.p.size = size;
             }
+        }
+        let storage = StorageService::new(Area::Local);
+        match storage {
+            Ok(mut storage) => {
+                storage.store(STORAGE_KEY, Json(&self.p));
+            }
+            Err(msg) => log!("couldn't instantiate storage {}", msg),
         }
         true
     }
@@ -375,28 +412,28 @@ impl Component for Model {
                                 </linearGradient>
                             </defs>
                             {
-                                if self.squares_enabled {
+                                if self.p.squares_enabled {
                                     self.render_squares()
                                 } else{
                                     html!{}
                                 }
                             }
                             {
-                                if self.arrows_enabled {
+                                if self.p.arrows_enabled {
                                     self.render_arrows()
                                 } else{
                                     html!{}
                                 }
                             }
                             {
-                                if self.paths_enabled {
+                                if self.p.paths_enabled {
                                     self.render_paths()
                                 } else{
                                     vec![html!{}]
                                 }
                             }
                             {
-                                if self.circles_enabled {
+                                if self.p.circles_enabled {
                                     self.render_circles()
                                 } else{
                                     vec![html!{}]
@@ -438,7 +475,7 @@ impl Component for Model {
                 <input
                     type="checkbox"
                     id="toggle_arrows"
-                    checked=self.arrows_enabled
+                    checked=self.p.arrows_enabled
                     onclick=self.link.callback(|_| Msg::ToggleArrows)
                 />
                 {" render arrows" }
@@ -446,7 +483,7 @@ impl Component for Model {
                 <input
                     type="checkbox"
                     id="toggle_circles"
-                    checked=self.circles_enabled
+                    checked=self.p.circles_enabled
                     onclick=self.link.callback(|_| Msg::ToggleCircles)
                 />
                 {" render circles" }
@@ -454,7 +491,7 @@ impl Component for Model {
                 <input
                     type="checkbox"
                     id="toggle_squares"
-                    checked=self.squares_enabled
+                    checked=self.p.squares_enabled
                     onclick=self.link.callback(|_| Msg::ToggleSquares)
                 />
                 {" render squares" }
@@ -462,7 +499,7 @@ impl Component for Model {
                 <input
                     type="checkbox"
                     id="toggle_paths"
-                    checked=self.paths_enabled
+                    checked=self.p.paths_enabled
                     onclick=self.link.callback(|_| Msg::TogglePaths)
                 />
                 {" render paths" }
@@ -475,7 +512,7 @@ impl Component for Model {
 impl Model {
     fn get_width(&self) -> usize {
         let base_size = 170;
-        match self.size {
+        match self.p.size {
             Size::Small => base_size,
             Size::Medium => base_size * 2,
             Size::Large => base_size * 4,
@@ -570,16 +607,16 @@ impl Model {
     }
 
     fn render_arrows(&self) -> Html {
-        (0..self.get_height() - self.step)
-            .step_by(self.step)
+        (0..self.get_height() - self.p.step)
+            .step_by(self.p.step)
             .skip(1)
             .map(|y| self.render_arrow_line(y))
             .collect::<Html>()
     }
 
     fn render_arrow_line(&self, y: usize) -> Html {
-        (0..self.get_width() - self.step)
-            .step_by(self.step)
+        (0..self.get_width() - self.p.step)
+            .step_by(self.p.step)
             .skip(1)
             .map(|x| {
                 Arrow {
@@ -600,8 +637,8 @@ impl Model {
                     .map(|square| {
                         square.draw(
                             &squares,
-                            self.colors().get(&self.color_scheme).unwrap(),
-                            self.variant,
+                            self.colors().get(&self.p.color_scheme).unwrap(),
+                            self.p.variant,
                         )
                     })
                     .collect::<Html>()
@@ -610,12 +647,12 @@ impl Model {
     }
 
     fn create_squares(&self) -> Vec<Vec<WithClustersSquare>> {
-        let first_pass: Vec<Vec<_>> = (0..self.get_height() - self.step)
-            .step_by(self.step)
+        let first_pass: Vec<Vec<_>> = (0..self.get_height() - self.p.step)
+            .step_by(self.p.step)
             .skip(1)
             .map(|y| {
-                (0..self.get_width() - self.step)
-                    .step_by(self.step)
+                (0..self.get_width() - self.p.step)
+                    .step_by(self.p.step)
                     .skip(1)
                     .map(|x| {
                         let link_right = (rand::thread_rng().gen_range(0, 3) < 1)
@@ -718,8 +755,8 @@ impl Model {
     }
 
     fn not_last(&self, dimension: usize, max_dimension: usize) -> bool {
-        let last = (0..max_dimension - self.step)
-            .step_by(self.step)
+        let last = (0..max_dimension - self.p.step)
+            .step_by(self.p.step)
             .skip(1)
             .last()
             .unwrap();
@@ -845,8 +882,8 @@ impl Model {
         let val = (0..length).fold((path, start_point), |(mut acc, last_point), _i| {
             let angle = self.angle_at(last_point);
             let next_point = Point {
-                x: last_point.x + angle.cos() * self.step as f32,
-                y: last_point.y + angle.sin() * self.step as f32,
+                x: last_point.x + angle.cos() * self.p.step as f32,
+                y: last_point.y + angle.sin() * self.p.step as f32,
             };
             acc.items.push(next_point);
             (acc, next_point)
@@ -862,12 +899,6 @@ impl Model {
         let max_effect_point = Point { x: 250.0, y: 250.0 };
         let distance = p.distance_to(&max_effect_point) * 4.0;
         let factor = 1.0 / ((distance / self.get_width() as f32).powf(2.0) + 1.0);
-        //log!(
-        //    "point is {:?}, distance is {}, factor is {}",
-        //    p,
-        //    distance,
-        //    factor
-        //);
 
         let cos = angle.cos();
         let sin = angle.sin();
