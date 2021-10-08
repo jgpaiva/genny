@@ -346,81 +346,87 @@ impl Component for Model {
 
         html! {
             <div class="container">
-                <svg
-                    viewBox={format!("0 0 {} {}", self.get_width(), self.get_height())}
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <circle id="myCircle" cx="0" cy="0" r="10" />
-                        <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10 Z" id="arrow" stroke="black" fill="transparent"/>
-                        <rect x="0" y="0" width="10" height="10" rx="3" ry ="3" id="square"/>
-                        <path d="M 7 0 L 7 10 L 17 10 L 17 0 L 10 0 Z" id="link_right" />
-                        <path d="M 0 7 L 0 17 L 10 17 L 10 7 L 0 7 Z" id="link_down" />
+                <div class="row">
+                    <div class="col">
+                        <svg
+                            viewBox={format!("0 0 {} {}", self.get_width(), self.get_height())}
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <circle id="myCircle" cx="0" cy="0" r="10" />
+                                <path d="M 0 0 L 0 10 L -1 9 L 1 9 L 0 10 Z" id="arrow" stroke="black" fill="transparent"/>
+                                <rect x="0" y="0" width="10" height="10" rx="3" ry ="3" id="square"/>
+                                <path d="M 7 0 L 7 10 L 17 10 L 17 0 L 10 0 Z" id="link_right" />
+                                <path d="M 0 7 L 0 17 L 10 17 L 10 7 L 0 7 Z" id="link_down" />
 
-                        <path d="M 0 0 L 10 0" id="closed_top" stroke-linecap="round"/>
-                        <path d="M 10 0 L 10 10" id="closed_right" stroke-linecap="round"/>
-                        <path d="M 0 0 L 0 10" id="closed_left" stroke-linecap="round"/>
-                        <path d="M 0 10 L 10 10" id="closed_bottom" stroke-linecap="round"/>
+                                <path d="M 0 0 L 10 0" id="closed_top" stroke-linecap="round"/>
+                                <path d="M 10 0 L 10 10" id="closed_right" stroke-linecap="round"/>
+                                <path d="M 0 0 L 0 10" id="closed_left" stroke-linecap="round"/>
+                                <path d="M 0 10 L 10 10" id="closed_bottom" stroke-linecap="round"/>
 
-                        <path d="M 0 0 L 0 -5" id="connection_up" stroke-linecap="round"/>
-                        <path d="M 10 0 L 15 0" id="connection_right" stroke-linecap="round"/>
-                        <path d="M 0 10 L -5 10" id="connection_left" stroke-linecap="round"/>
-                        <path d="M 10 10 L 10 15" id="connection_down" stroke-linecap="round"/>
+                                <path d="M 0 0 L 0 -5" id="connection_up" stroke-linecap="round"/>
+                                <path d="M 10 0 L 15 0" id="connection_right" stroke-linecap="round"/>
+                                <path d="M 0 10 L -5 10" id="connection_left" stroke-linecap="round"/>
+                                <path d="M 10 10 L 10 15" id="connection_down" stroke-linecap="round"/>
 
-                        <linearGradient id="myGradient" gradientTransform="rotate(90)">
-                            <stop offset="10%" stop-color="white" />
-                            <stop offset="90%" stop-color="gold" />
-                        </linearGradient>
-                    </defs>
-                    {
-                        if self.squares_enabled {
-                            self.render_squares()
-                        } else{
-                            html!{}
-                        }
-                    }
-                    {
-                        if self.arrows_enabled {
-                            self.render_arrows()
-                        } else{
-                            html!{}
-                        }
-                    }
-                    {
-                        if self.paths_enabled {
-                            self.render_paths()
-                        } else{
-                            vec![html!{}]
-                        }
-                    }
-                    {
-                        if self.circles_enabled {
-                            self.render_circles()
-                        } else{
-                            vec![html!{}]
-                        }
-                    }
-                </svg>
-                <div>
-                {"Choose theme: " }
-                <br/>
-                {
-                    self.render_color_options()
-                }
+                                <linearGradient id="myGradient" gradientTransform="rotate(90)">
+                                    <stop offset="10%" stop-color="white" />
+                                    <stop offset="90%" stop-color="gold" />
+                                </linearGradient>
+                            </defs>
+                            {
+                                if self.squares_enabled {
+                                    self.render_squares()
+                                } else{
+                                    html!{}
+                                }
+                            }
+                            {
+                                if self.arrows_enabled {
+                                    self.render_arrows()
+                                } else{
+                                    html!{}
+                                }
+                            }
+                            {
+                                if self.paths_enabled {
+                                    self.render_paths()
+                                } else{
+                                    vec![html!{}]
+                                }
+                            }
+                            {
+                                if self.circles_enabled {
+                                    self.render_circles()
+                                } else{
+                                    vec![html!{}]
+                                }
+                            }
+                        </svg>
+                    </div>
                 </div>
-                <div>
-                {"Choose variant: " }
-                <br/>
-                {
-                    self.render_variant_options()
-                }
-                </div>
-                <div>
-                {"Choose size: " }
-                <br/>
-                {
-                    self.render_size_options()
-                }
+                <div class="row text-center">
+                    <div class="col-lg-4">
+                    {"Choose theme: " }
+                    <br/>
+                    {
+                        self.render_color_options()
+                    }
+                    </div>
+                    <div class="col-lg-4">
+                    {"Choose variant: " }
+                    <br/>
+                    {
+                        self.render_variant_options()
+                    }
+                    </div>
+                    <div class="col-lg-4">
+                    {"Choose size: " }
+                    <br/>
+                    {
+                        self.render_size_options()
+                    }
+                    </div>
                 </div>
                 /*
                 <input
