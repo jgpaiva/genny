@@ -346,8 +346,8 @@ impl Component for Model {
 
         html! {
             <div class="container">
-                <div class="row">
-                    <div class="col">
+                <div class="row align-items-center">
+                    <div class="col-sm-9">
                         <svg
                             viewBox={format!("0 0 {} {}", self.get_width(), self.get_height())}
                             fill="none"
@@ -404,28 +404,34 @@ impl Component for Model {
                             }
                         </svg>
                     </div>
-                </div>
-                <div class="row text-center">
-                    <div class="col-lg-4">
-                    {"Choose theme: " }
-                    <br/>
-                    {
-                        self.render_color_options()
-                    }
-                    </div>
-                    <div class="col-lg-4">
-                    {"Choose variant: " }
-                    <br/>
-                    {
-                        self.render_variant_options()
-                    }
-                    </div>
-                    <div class="col-lg-4">
-                    {"Choose size: " }
-                    <br/>
-                    {
-                        self.render_size_options()
-                    }
+                    <div class="col-sm-3">
+                        <div class="row text-center">
+                            <div class="col">
+                                {"Choose theme: " }
+                                <br/>
+                                {
+                                    self.render_color_options()
+                                }
+                            </div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col">
+                                {"Choose variant: " }
+                                <br/>
+                                {
+                                    self.render_variant_options()
+                                }
+                            </div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col">
+                                {"Choose size: " }
+                                <br/>
+                                {
+                                    self.render_size_options()
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
                 /*
