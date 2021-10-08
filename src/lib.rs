@@ -347,7 +347,7 @@ impl Component for Model {
         html! {
             <div class="container">
                 <svg
-                    viewBox={format!("0 0 {} {}", self.getWidth(), self.getHeight())}
+                    viewBox={format!("0 0 {} {}", self.get_width(), self.get_height())}
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -461,7 +461,7 @@ impl Component for Model {
 }
 
 impl Model {
-    fn getWidth(&self) -> usize {
+    fn get_width(&self) -> usize {
         let base_size = 170;
         match self.size {
             Size::Small => base_size * 2,
@@ -470,15 +470,15 @@ impl Model {
         }
     }
 
-    fn getHeight(&self) -> usize {
-        self.getWidth()
+    fn get_height(&self) -> usize {
+        self.get_width()
     }
 
     fn random_point(&self, points: &Vec<UsizePoint>) -> UsizePoint {
         let mut i = 0;
         loop {
-            let x = rand::thread_rng().gen_range(0, self.getWidth());
-            let y = rand::thread_rng().gen_range(0, self.getHeight());
+            let x = rand::thread_rng().gen_range(0, self.get_width());
+            let y = rand::thread_rng().gen_range(0, self.get_height());
             let p = UsizePoint { x, y };
             if !points.contains(&p) {
                 log!("worked at {}", i);
@@ -493,19 +493,19 @@ impl Model {
 
     fn border_point(&self, i: usize) -> UsizePoint {
         UsizePoint {
-            x: if i < 2 * self.getWidth() {
-                i % self.getWidth()
-            } else if i < 2 * self.getWidth() + self.getHeight() {
+            x: if i < 2 * self.get_width() {
+                i % self.get_width()
+            } else if i < 2 * self.get_width() + self.get_height() {
                 0
             } else {
-                self.getWidth() - 1
+                self.get_width() - 1
             },
-            y: if i < self.getWidth() {
+            y: if i < self.get_width() {
                 0
-            } else if i < 2 * self.getWidth() {
-                self.getHeight() - 1
+            } else if i < 2 * self.get_width() {
+                self.get_height() - 1
             } else {
-                (i - 2 * self.getWidth()) % self.getHeight()
+                (i - 2 * self.get_width()) % self.get_height()
             },
         }
     }
@@ -558,7 +558,7 @@ impl Model {
     }
 
     fn render_arrows(&self) -> Html {
-        (0..self.getHeight() - self.step)
+        (0..self.get_height() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|y| self.render_arrow_line(y))
@@ -566,7 +566,7 @@ impl Model {
     }
 
     fn render_arrow_line(&self, y: usize) -> Html {
-        (0..self.getWidth() - self.step)
+        (0..self.get_width() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|x| {
@@ -598,18 +598,18 @@ impl Model {
     }
 
     fn create_squares(&self) -> Vec<Vec<WithClustersSquare>> {
-        let first_pass: Vec<Vec<_>> = (0..self.getHeight() - self.step)
+        let first_pass: Vec<Vec<_>> = (0..self.get_height() - self.step)
             .step_by(self.step)
             .skip(1)
             .map(|y| {
-                (0..self.getWidth() - self.step)
+                (0..self.get_width() - self.step)
                     .step_by(self.step)
                     .skip(1)
                     .map(|x| {
                         let link_right = (rand::thread_rng().gen_range(0, 3) < 1)
-                            && self.not_last(x, self.getWidth());
+                            && self.not_last(x, self.get_width());
                         let link_down = rand::thread_rng().gen_range(0, 3) < 1
-                            && self.not_last(y, self.getHeight());
+                            && self.not_last(y, self.get_height());
                         InitialSquare {
                             p: Point::from_usize(x, y),
                             link_right,
@@ -717,8 +717,8 @@ impl Model {
     fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
         let mut i = 0;
         loop {
-            let x = rand::thread_rng().gen_range(0, self.getWidth()) as f32;
-            let y = rand::thread_rng().gen_range(0, self.getHeight()) as f32;
+            let x = rand::thread_rng().gen_range(0, self.get_width()) as f32;
+            let y = rand::thread_rng().gen_range(0, self.get_height()) as f32;
             let p = Point { x, y };
             let mut matching_circles = circles
                 .iter()
@@ -780,10 +780,10 @@ impl Model {
     }
 
     fn render_paths(&self) -> Vec<Html> {
-        let num_paths = (0.05 * ((self.getWidth() * self.getHeight()) as f32)) as usize;
+        let num_paths = (0.05 * ((self.get_width() * self.get_height()) as f32)) as usize;
         let mut all_points = Vec::new();
         let circles = self.circles();
-        let borders = (self.getWidth() + self.getHeight()) * 2;
+        let borders = (self.get_width() + self.get_height()) * 2;
         (0..(num_paths + borders)).fold(Vec::new(), |mut acc, i| {
             let point = if i < borders {
                 self.border_point(i)
@@ -796,7 +796,7 @@ impl Model {
             for p in item.items {
                 let x = p.x as u32;
                 let y = p.y as u32;
-                if x < self.getWidth() as u32 && y < self.getHeight() as u32 {
+                if x < self.get_width() as u32 && y < self.get_height() as u32 {
                     let x = usize::try_from(x).unwrap();
                     let y = usize::try_from(y).unwrap();
                     all_points.push(UsizePoint { x, y });
@@ -826,7 +826,7 @@ impl Model {
             x: p.x as f32,
             y: p.y as f32,
         };
-        let length = (self.getWidth() + self.getHeight()) / 200;
+        let length = (self.get_width() + self.get_height()) / 200;
         let path = Path {
             items: vec![start_point],
         };
@@ -849,7 +849,7 @@ impl Model {
     fn modify_angle_at(&self, p: Point, angle: f32) -> f32 {
         let max_effect_point = Point { x: 250.0, y: 250.0 };
         let distance = p.distance_to(&max_effect_point) * 4.0;
-        let factor = 1.0 / ((distance / self.getWidth() as f32).powf(2.0) + 1.0);
+        let factor = 1.0 / ((distance / self.get_width() as f32).powf(2.0) + 1.0);
         //log!(
         //    "point is {:?}, distance is {}, factor is {}",
         //    p,
@@ -868,8 +868,8 @@ impl Model {
     }
 
     fn zero_to_one_flow_field(&self, p: Point) -> f32 {
-        let height = self.getHeight() as f32;
-        let width = self.getWidth() as f32;
+        let height = self.get_height() as f32;
+        let width = self.get_width() as f32;
         let x = width / ((p.x - 0.5 * width) * 0.2 - width)
             - ((p.x - 0.5 * width) * 2.0 - width * 0.5) / width;
         let y = p.y * p.y - height * height * 0.7;
