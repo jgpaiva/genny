@@ -80,7 +80,7 @@ impl Model {
                 vec!["#370617", "#DC2F02", "#F48C06", "#FFBA08", "#9D0208"],
             ),
         ]
-        .iter()
+        .into_iter()
         .map(|(k, v)| {
             (
                 (*k).to_owned(),
@@ -253,25 +253,29 @@ impl WithClustersSquare {
                 vec![square, link_right, link_down]
             }
             Variant::Outline => {
+                let make_html = |s:&WithClustersSquare, href| {
+                    html! {<use x={s.p.x.to_string()} y={s.p.y.to_string()} href={href} stroke={color.clone()}/>}
+                };
+
                 let top = if self.link_up {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_up" stroke ={color.clone()}/>}
+                    make_html(self, "#connection_up")
                 } else {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_top"  stroke ={color.clone()}/>}
+                    make_html(self, "#closed_top")
                 };
                 let right = if self.link_right {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_right" stroke ={color.clone()}/>}
+                    make_html(self, "#connection_right")
                 } else {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_right" stroke ={color.clone()}/>}
+                    make_html(self, "#closed_right")
                 };
                 let left = if self.link_left {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_left" stroke ={color.clone()}/>}
+                    make_html(self, "#connection_left")
                 } else {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_left" stroke ={color.clone()}/>}
+                    make_html(self, "#closed_left")
                 };
                 let bottom = if self.link_down {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_down" stroke ={color.clone()}/>}
+                    make_html(self, "#connection_down")
                 } else {
-                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_bottom" stroke ={color.clone()}/>}
+                    make_html(self, "#closed_bottom")
                 };
                 vec![top, left, right, bottom]
             }
@@ -338,11 +342,10 @@ impl Component for Model {
     fn create(_ctx: &yew::Context<Self>) -> Self {
         let p = LocalStorage::get(STORAGE_KEY).unwrap_or_else(|_| ModelProperties::default());
 
-        let p = if Model::colors().get(&p.color_scheme).is_some() {
-            p
-        } else {
-            ModelProperties::default()
-        };
+        let p = Model::colors()
+            .get(&p.color_scheme)
+            .map(|_| p)
+            .unwrap_or_else(ModelProperties::default);
 
         Self { p }
     }
@@ -595,14 +598,8 @@ impl Model {
                 let mut colors:Vec<_> = self_colors.keys().collect();
                 colors.sort();
                 colors.into_iter().map(|color_name|{
-                    if self.p.color_scheme == *color_name {
-                        html!{
-                            <option value={color_name.clone()} selected=true>{color_name}</option>
-                        }
-                    } else {
-                        html!{
-                            <option value={color_name.clone()}>{color_name}</option>
-                        }
+                    html!{
+                        <option value={color_name.clone()} selected={self.p.color_scheme == *color_name}>{color_name}</option>
                     }
                 }).collect::<Html>()
             }}
@@ -619,11 +616,7 @@ impl Model {
             {{
                 let variants:Vec<String> = vec![Variant::Filled.to_string(), Variant::Outline.to_string()];
                 variants.iter().map(|variant|{
-                    if self.p.variant.to_string() == *variant {
-                        html!{<option value={variant.clone()} selected= true>{variant}</option>}
-                    } else {
-                        html!{<option value={variant.clone()}>{variant}</option>}
-                    }
+                    html!{<option value={variant.clone()} selected={self.p.variant.to_string() == *variant}>{variant}</option>}
                 }).collect::<Html>()
             }}
             </select>
@@ -639,12 +632,7 @@ impl Model {
             {{
                 let sizes:Vec<String> = vec![Size::Small.to_string(), Size::Medium.to_string(), Size::Large.to_string()];
                 sizes.iter().map(|size|{
-                    if self.p.size.to_string() == *size {
-                        html!{<option value={size.clone()} selected=true>{size}</option>}
-                    }else {
-                        html!{<option value={size.clone()}>{size}</option>}
-
-                    }
+                    html!{<option value={size.clone()} selected={self.p.size.to_string() == *size}>{size}</option>}
                 }).collect::<Html>()
             }}
             </select>
