@@ -1,18 +1,16 @@
 #![recursion_limit = "1024"]
+#![allow(clippy::unused_unit)]
 
+use gloo::storage::{LocalStorage, Storage};
 use rand::Rng;
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
-    error::Error,
     str::FromStr,
 };
 use wasm_bindgen::prelude::*;
-use yew::{
-    format::Json,
-    prelude::*,
-    services::{storage::Area, StorageService},
-};
+use yew::prelude::*;
+
 extern crate console_error_panic_hook;
 use std::panic;
 extern crate web_sys;
@@ -21,15 +19,14 @@ use serde::{Deserialize, Serialize};
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
 macro_rules! log {
     ( $( $t:tt )* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
+        web_sys::console::log_1(&format!( $( $t )* ).into())
     }
 }
 
-const STORAGE_KEY: &'static str = "yew.genny.database";
+const STORAGE_KEY: &str = "yew.genny.database";
 
 struct Model {
     p: ModelProperties,
-    link: ComponentLink<Self>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,14 +91,15 @@ impl Model {
     }
 }
 
+#[allow(dead_code)]
 enum Msg {
     ToggleArrows,
     TogglePaths,
     ToggleCircles,
     ToggleSquares,
-    UpdateColor(yew::ChangeData),
-    UpdateVariant(yew::ChangeData),
-    UpdateSize(yew::ChangeData),
+    UpdateColor(String),
+    UpdateVariant(String),
+    UpdateSize(String),
 }
 
 struct Circle {
@@ -118,7 +116,7 @@ impl Arrow {
     fn draw(&self) -> Html {
         html! {
             <g transform={format!("rotate({},{},{})", Arrow::rad_to_deg(self.angle), self.p.x, self.p.y)}>
-                <use x=self.p.x y=self.p.y href="#arrow" fill="black" />
+                <use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#arrow" fill="black" />
             </g>
         }
     }
@@ -141,6 +139,7 @@ struct WithLinksSquare {
     link_right: bool,
     link_down: bool,
 }
+#[allow(dead_code)]
 struct WithClustersSquare {
     p: Point,
     link_up: bool,
@@ -216,8 +215,8 @@ impl FromStr for Size {
 impl WithClustersSquare {
     fn draw(
         &self,
-        squares: &Vec<Vec<WithClustersSquare>>,
-        colors: &Vec<String>,
+        squares: &[Vec<WithClustersSquare>],
+        colors: &[String],
         variant: Variant,
     ) -> Html {
         let max_cluster_size = squares
@@ -240,14 +239,14 @@ impl WithClustersSquare {
         match variant {
             Variant::Filled => {
                 let square =
-                    html! { <use x=self.p.x y=self.p.y href="#square" stroke=color fill=color/>};
+                    html! { <use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#square" stroke={color.clone()} fill={color.clone()}/>};
                 let link_right = if self.link_right {
-                    html! { <use x=self.p.x y=self.p.y href="#link_right" stroke=color fill=color/>}
+                    html! { <use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#link_right" stroke={color.clone()} fill={color.clone()}/>}
                 } else {
                     html! {}
                 };
                 let link_down = if self.link_down {
-                    html! {<use x=self.p.x y=self.p.y href="#link_down" stroke=color fill=color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#link_down" stroke={color.clone()} fill={color.clone()}/>}
                 } else {
                     html! {}
                 };
@@ -255,24 +254,24 @@ impl WithClustersSquare {
             }
             Variant::Outline => {
                 let top = if self.link_up {
-                    html! {<use x=self.p.x y=self.p.y href="#connection_up" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_up" stroke ={color.clone()}/>}
                 } else {
-                    html! {<use x=self.p.x y=self.p.y href="#closed_top"  stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_top"  stroke ={color.clone()}/>}
                 };
                 let right = if self.link_right {
-                    html! {<use x=self.p.x y=self.p.y href="#connection_right" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_right" stroke ={color.clone()}/>}
                 } else {
-                    html! {<use x=self.p.x y=self.p.y href="#closed_right" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_right" stroke ={color.clone()}/>}
                 };
                 let left = if self.link_left {
-                    html! {<use x=self.p.x y=self.p.y href="#connection_left" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_left" stroke ={color.clone()}/>}
                 } else {
-                    html! {<use x=self.p.x y=self.p.y href="#closed_left" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_left" stroke ={color.clone()}/>}
                 };
                 let bottom = if self.link_down {
-                    html! {<use x=self.p.x y=self.p.y href="#connection_down" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#connection_down" stroke ={color.clone()}/>}
                 } else {
-                    html! {<use x=self.p.x y=self.p.y href="#closed_bottom" stroke = color/>}
+                    html! {<use x={self.p.x.to_string()} y={self.p.y.to_string()} href="#closed_bottom" stroke ={color.clone()}/>}
                 };
                 vec![top, left, right, bottom]
             }
@@ -328,7 +327,7 @@ impl Path {
             });
 
         html! {
-            <path d={path} stroke={color} stroke-width="1" fill="transparent"/>
+            <path d={path} stroke={color.to_string()} stroke-width="1" fill="transparent"/>
         }
     }
 }
@@ -336,46 +335,32 @@ impl Path {
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
-        let p = match storage {
-            Ok(storage) => {
-                let Json(v) = storage.restore(STORAGE_KEY);
-                v
-            }
-            Err(msg) => {
-                log!("couldn't instantiate storage {}", msg);
-                Ok(ModelProperties::default())
-            }
-        }
-        .unwrap_or_default();
-        let p = if let Some(_) = Model::colors().get(&p.color_scheme) {
+    fn create(_ctx: &yew::Context<Self>) -> Self {
+        let p = LocalStorage::get(STORAGE_KEY).unwrap_or_else(|_| ModelProperties::default());
+
+        let p = if Model::colors().get(&p.color_scheme).is_some() {
             p
         } else {
             ModelProperties::default()
         };
 
-        Self { link, p: p }
+        Self { p }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ToggleArrows => self.p.arrows_enabled = !self.p.arrows_enabled,
             Msg::TogglePaths => self.p.paths_enabled = !self.p.paths_enabled,
             Msg::ToggleSquares => self.p.squares_enabled = !self.p.squares_enabled,
             Msg::ToggleCircles => self.p.circles_enabled = !self.p.circles_enabled,
-            Msg::UpdateColor(cd) => {
-                let color_scheme = match cd {
-                    ChangeData::Select(se) => se.value(),
-                    _ => unreachable!(),
-                };
-                self.p.color_scheme = color_scheme;
+            Msg::UpdateColor(color_scheme) => {
+                if Model::colors().get(&color_scheme).is_some() {
+                    self.p.color_scheme = color_scheme;
+                } else {
+                    log!("color scheme invalid: {}", color_scheme);
+                }
             }
-            Msg::UpdateVariant(cd) => {
-                let variant = match cd {
-                    ChangeData::Select(se) => se.value(),
-                    _ => unreachable!(),
-                };
+            Msg::UpdateVariant(variant) => {
                 let variant = if variant == "Outline" {
                     Variant::Outline
                 } else if variant == "Filled" {
@@ -385,11 +370,7 @@ impl Component for Model {
                 };
                 self.p.variant = variant;
             }
-            Msg::UpdateSize(cd) => {
-                let variant = match cd {
-                    ChangeData::Select(se) => se.value(),
-                    _ => unreachable!(),
-                };
+            Msg::UpdateSize(variant) => {
                 let size = if variant == "Small" {
                     Size::Small
                 } else if variant == "Medium" {
@@ -402,24 +383,11 @@ impl Component for Model {
                 self.p.size = size;
             }
         }
-        let storage = StorageService::new(Area::Local);
-        match storage {
-            Ok(mut storage) => {
-                storage.store(STORAGE_KEY, Json(&self.p));
-            }
-            Err(msg) => log!("couldn't instantiate storage {}", msg),
-        }
+        LocalStorage::set(STORAGE_KEY, &self.p).expect("failed to set");
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        // Should only return "true" if new properties are different to
-        // previously received properties.
-        // This component has no properties so we will always return "false".
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         /*
         <path d={format!("M 10 250 T 10 250 T {} {} T 490 250", point[0], point[1])} stroke="blue" fill="transparent"/>
         <path d={format!("M 10 250 Q {} {} 490 250", point[0], point[1])} stroke="black" fill="transparent"/>
@@ -503,7 +471,7 @@ impl Component for Model {
                                 {"Choose theme: " }
                                 <br/>
                                 {
-                                    self.render_color_options()
+                                    self.render_color_options(ctx)
                                 }
                             </div>
                         </div>
@@ -512,7 +480,7 @@ impl Component for Model {
                                 {"Choose variant: " }
                                 <br/>
                                 {
-                                    self.render_variant_options()
+                                    self.render_variant_options(ctx)
                                 }
                             </div>
                         </div>
@@ -521,7 +489,7 @@ impl Component for Model {
                                 {"Choose size: " }
                                 <br/>
                                 {
-                                    self.render_size_options()
+                                    self.render_size_options(ctx)
                                 }
                             </div>
                         </div>
@@ -579,11 +547,12 @@ impl Model {
         self.get_width()
     }
 
-    fn random_point(&self, points: &Vec<UsizePoint>) -> UsizePoint {
+    fn random_point(&self, points: &[UsizePoint]) -> UsizePoint {
         let mut i = 0;
+
         loop {
-            let x = rand::thread_rng().gen_range(0, self.get_width());
-            let y = rand::thread_rng().gen_range(0, self.get_height());
+            let x = rand::thread_rng().gen_range(0..self.get_width());
+            let y = rand::thread_rng().gen_range(0..self.get_height());
             let p = UsizePoint { x, y };
             if !points.contains(&p) {
                 log!("worked at {}", i);
@@ -615,9 +584,12 @@ impl Model {
         }
     }
 
-    fn render_color_options(&self) -> Html {
+    fn render_color_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <select name="colors" id="colors" onchange=self.link.callback(|cd| Msg::UpdateColor(cd))>
+            <select name="colors" id="colors" onchange={ctx.link().callback(|e: Event|{
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateColor(select.value())
+            })}>
             {{
                 let self_colors = Self::colors();
                 let mut colors:Vec<_> = self_colors.keys().collect();
@@ -625,11 +597,11 @@ impl Model {
                 colors.into_iter().map(|color_name|{
                     if self.p.color_scheme == *color_name {
                         html!{
-                            <option value=color_name selected=true>{color_name}</option>
+                            <option value={color_name.clone()} selected=true>{color_name}</option>
                         }
                     } else {
                         html!{
-                            <option value=color_name>{color_name}</option>
+                            <option value={color_name.clone()}>{color_name}</option>
                         }
                     }
                 }).collect::<Html>()
@@ -638,16 +610,19 @@ impl Model {
         }
     }
 
-    fn render_variant_options(&self) -> Html {
+    fn render_variant_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <select name="variants" id="variants" onchange=self.link.callback(|cd| Msg::UpdateVariant(cd))>
+            <select name="variants" id="variants" onchange={ctx.link().callback(|e: Event| {
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateVariant(select.value())
+            })}>
             {{
-                let mut variants:Vec<String> = vec![Variant::Filled.to_string(), Variant::Outline.to_string()];
+                let variants:Vec<String> = vec![Variant::Filled.to_string(), Variant::Outline.to_string()];
                 variants.iter().map(|variant|{
                     if self.p.variant.to_string() == *variant {
-                        html!{<option value=variant selected= true>{variant}</option>}
+                        html!{<option value={variant.clone()} selected= true>{variant}</option>}
                     } else {
-                        html!{<option value=variant>{variant}</option>}
+                        html!{<option value={variant.clone()}>{variant}</option>}
                     }
                 }).collect::<Html>()
             }}
@@ -655,16 +630,19 @@ impl Model {
         }
     }
 
-    fn render_size_options(&self) -> Html {
+    fn render_size_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <select name="sizes" id="sizes" onchange=self.link.callback(|cd| Msg::UpdateSize(cd))>
+            <select name="sizes" id="sizes" onchange={ctx.link().callback(|e: Event| {
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateSize(select.value())
+            })}>
             {{
-                let mut sizes:Vec<String> = vec![Size::Small.to_string(), Size::Medium.to_string(), Size::Large.to_string()];
+                let sizes:Vec<String> = vec![Size::Small.to_string(), Size::Medium.to_string(), Size::Large.to_string()];
                 sizes.iter().map(|size|{
                     if self.p.size.to_string() == *size {
-                        html!{<option value=size selected=true>{size}</option>}
+                        html!{<option value={size.clone()} selected=true>{size}</option>}
                     }else {
-                        html!{<option value=size>{size}</option>}
+                        html!{<option value={size.clone()}>{size}</option>}
 
                     }
                 }).collect::<Html>()
@@ -722,9 +700,9 @@ impl Model {
                     .step_by(self.p.step)
                     .skip(1)
                     .map(|x| {
-                        let link_right = (rand::thread_rng().gen_range(0, 3) < 1)
+                        let link_right = (rand::thread_rng().gen_range(0..3) < 1)
                             && self.not_last(x, self.get_width());
-                        let link_down = rand::thread_rng().gen_range(0, 3) < 1
+                        let link_down = rand::thread_rng().gen_range(0..3) < 1
                             && self.not_last(y, self.get_height());
                         InitialSquare {
                             p: Point::from_usize(x, y),
@@ -780,7 +758,7 @@ impl Model {
         clusters: &mut HashMap<(usize, usize), (usize, usize)>,
         i: usize,
         j: usize,
-        first_pass: &Vec<Vec<WithLinksSquare>>,
+        first_pass: &[Vec<WithLinksSquare>],
     ) -> (usize, usize) {
         let v = clusters.get(&(i, j));
         match v {
@@ -801,7 +779,7 @@ impl Model {
     fn dfs_cluster(
         i: usize,
         j: usize,
-        first_pass: &Vec<Vec<WithLinksSquare>>,
+        first_pass: &[Vec<WithLinksSquare>],
         result: &mut HashSet<(usize, usize)>,
     ) {
         if !result.insert((i, j)) {
@@ -830,11 +808,11 @@ impl Model {
         dimension != last
     }
 
-    fn gen_random_point(&self, diameter: usize, circles: &Vec<(Circle, &'static str)>) -> Point {
+    fn gen_random_point(&self, diameter: usize, circles: &[(Circle, &'static str)]) -> Point {
         let mut i = 0;
         loop {
-            let x = rand::thread_rng().gen_range(0, self.get_width()) as f32;
-            let y = rand::thread_rng().gen_range(0, self.get_height()) as f32;
+            let x = rand::thread_rng().gen_range(0..self.get_width()) as f32;
+            let y = rand::thread_rng().gen_range(0..self.get_height()) as f32;
             let p = Point { x, y };
             let mut matching_circles = circles
                 .iter()
@@ -886,10 +864,14 @@ impl Model {
     fn render_circles(&self) -> Vec<Html> {
         let circles = self.circles();
         circles
-            .iter()
+            .into_iter()
             .map(|(circle, color)| {
                 html! {
-                    <circle cx={circle.p.x} cy={circle.p.y} r={circle.r} fill={color} />
+                    <circle
+                        cx={circle.p.x.to_string()}
+                        cy={circle.p.y.to_string()}
+                        r={circle.r.to_string()}
+                        fill={color.to_string()} />
                 }
             })
             .collect()
@@ -922,11 +904,7 @@ impl Model {
         })
     }
 
-    fn select_path_color(
-        &self,
-        item: &Path,
-        circles: &Vec<(Circle, &'static str)>,
-    ) -> &'static str {
+    fn select_path_color(&self, item: &Path, circles: &[(Circle, &'static str)]) -> &'static str {
         let first_item = item.items.first().unwrap();
         let mut candidates = circles
             .iter()
@@ -997,5 +975,5 @@ impl Model {
 #[wasm_bindgen(start)]
 pub fn run_app() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-    App::<Model>::new().mount_to_body();
+    yew::start_app::<Model>();
 }
