@@ -39,11 +39,13 @@ struct ModelProperties {
     variant: Variant,
     size: Size,
     mode: Mode,
+    version: i32,
 }
 
 impl Default for ModelProperties {
     fn default() -> Self {
         Self {
+            version: 2,
             step: 15,
             arrows_enabled: false,
             paths_enabled: false,
@@ -204,7 +206,7 @@ impl Default for StringsModeProps {
     fn default() -> Self {
         Self {
             splits: HowMany::Lots,
-            radius: Size::Small,
+            radius: Size::Large,
             show_base: false,
         }
     }
@@ -411,7 +413,14 @@ impl Component for Model {
             .map(|_| p)
             .unwrap_or_else(ModelProperties::default);
 
-        Self { p }
+        let current_version = ModelProperties::default().version;
+        if p.version != current_version {
+            Self {
+                p: Default::default(),
+            }
+        } else {
+            Self { p }
+        }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
