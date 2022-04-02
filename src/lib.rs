@@ -203,7 +203,7 @@ struct StringsModeProps {
 impl Default for StringsModeProps {
     fn default() -> Self {
         Self {
-            splits: HowMany::TooMany,
+            splits: HowMany::Lots,
             radius: Size::Small,
             show_base: false,
         }
@@ -246,16 +246,16 @@ impl FromStr for Size {
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 enum HowMany {
     Few,
-    Many,
-    TooMany,
+    Some,
+    Lots,
 }
 
 impl ToString for HowMany {
     fn to_string(&self) -> String {
         match self {
             HowMany::Few => "Few".to_owned(),
-            HowMany::Many => "Many".to_owned(),
-            HowMany::TooMany => "TooMany".to_owned(),
+            HowMany::Some => "Some".to_owned(),
+            HowMany::Lots => "Lots".to_owned(),
         }
     }
 }
@@ -266,10 +266,10 @@ impl FromStr for HowMany {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "Few" {
             Ok(HowMany::Few)
-        } else if s == "Many" {
-            Ok(HowMany::Many)
-        } else if s == "TooMany" {
-            Ok(HowMany::TooMany)
+        } else if s == "Some" {
+            Ok(HowMany::Some)
+        } else if s == "Lots" {
+            Ok(HowMany::Lots)
         } else {
             Err(format!("Could not parse how many from str: {}", s))
         }
@@ -791,7 +791,7 @@ impl Model {
                 Msg::UpdateStringsSplits(select.value().parse().unwrap())
             })}>
             {{
-                let splits = vec![HowMany::Few, HowMany::Many, HowMany::TooMany];
+                let splits = vec![HowMany::Few, HowMany::Some, HowMany::Lots];
                 let current_splits = match self.p.mode {
                     Mode::Squares => unreachable!(),
                     Mode::Strings(props) =>  props.splits,
@@ -1096,8 +1096,8 @@ impl Model {
     fn render_strings(&self, props: StringsModeProps) -> Vec<Html> {
         let splits = match props.splits {
             HowMany::Few => 40,
-            HowMany::Many => 80,
-            HowMany::TooMany => 160,
+            HowMany::Some => 80,
+            HowMany::Lots => 160,
         };
         let radius = match props.radius {
             Size::Small => 15.0,
