@@ -1156,15 +1156,28 @@ impl Model {
         }
 
         let mut path = vec![];
-        for (p1, p2) in circle_points.into_iter().zip(square_points.into_iter()) {
-            path.push(p1);
-            path.push(p2);
+        for (p1, p2) in circle_points.iter().zip(square_points.iter()) {
+            path.push(*p1);
+            path.push(*p2);
         }
-        res.push(self.render_simple_path(path));
+        res.push(self.render_simple_path(path, "blue"));
+
+        let mut path = vec![];
+        for (p1, p2) in circle_points
+            .iter()
+            .rev()
+            .chain(circle_points.iter().rev())
+            .skip(30)
+            .zip(square_points.iter().rev())
+        {
+            path.push(*p1);
+            path.push(*p2);
+        }
+        res.push(self.render_simple_path(path, "red"));
         res
     }
 
-    fn render_simple_path(&self, path: Vec<(f32, f32)>) -> Html {
+    fn render_simple_path(&self, path: Vec<(f32, f32)>, color: &str) -> Html {
         let path: String = path
             .into_iter()
             .enumerate()
@@ -1179,7 +1192,7 @@ impl Model {
         // close the path
         let path = format!("{} Z", path);
         html! {
-            <path d={path} stroke="blue" fill="transparent" stroke-width="0.1"/>
+            <path d={path} stroke={color.to_string()} fill="transparent" stroke-width="0.1"/>
         }
     }
 
