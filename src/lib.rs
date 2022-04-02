@@ -34,11 +34,11 @@ struct ModelProperties {
     step: usize,
     arrows_enabled: bool,
     paths_enabled: bool,
-    squares_enabled: bool,
     circles_enabled: bool,
     color_scheme: String,
     variant: Variant,
     size: Size,
+    mode: Mode,
 }
 
 impl Default for ModelProperties {
@@ -47,11 +47,11 @@ impl Default for ModelProperties {
             step: 15,
             arrows_enabled: false,
             paths_enabled: false,
-            squares_enabled: true,
             circles_enabled: false,
             variant: Variant::Filled,
             size: Size::Small,
             color_scheme: "accented".to_owned(),
+            mode: Default::default(),
         }
     }
 }
@@ -96,10 +96,10 @@ enum Msg {
     ToggleArrows,
     TogglePaths,
     ToggleCircles,
-    ToggleSquares,
     UpdateColor(String),
     UpdateVariant(String),
     UpdateSize(String),
+    UpdateMode(Mode),
 }
 
 struct Circle {
@@ -175,6 +175,39 @@ impl FromStr for Variant {
             Ok(Variant::Filled)
         } else {
             Err(format!("Could not parse Variant from str: {}", s))
+        }
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+enum Mode {
+    Squares,
+    Strings,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Squares
+    }
+}
+
+impl From<String> for Mode {
+    fn from(s: String) -> Self {
+        if s == "Squares" {
+            Mode::Squares
+        } else if s == "Strings" {
+            Mode::Strings
+        } else {
+            Default::default()
+        }
+    }
+}
+
+impl From<Mode> for String {
+    fn from(mode: Mode) -> Self {
+        match mode {
+            Mode::Squares => "Squares".to_owned(),
+            Mode::Strings => "Strings".to_owned(),
         }
     }
 }
@@ -352,9 +385,23 @@ impl Component for Model {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::UpdateMode(mode) => {
+                match mode {
+                    Mode::Squares => {
+                        self.p.circles_enabled = false;
+                        self.p.paths_enabled = false;
+                        self.p.arrows_enabled = false;
+                    }
+                    Mode::Strings => {
+                        self.p.circles_enabled = false;
+                        self.p.paths_enabled = false;
+                        self.p.arrows_enabled = false;
+                    }
+                };
+                self.p.mode = mode;
+            }
             Msg::ToggleArrows => self.p.arrows_enabled = !self.p.arrows_enabled,
             Msg::TogglePaths => self.p.paths_enabled = !self.p.paths_enabled,
-            Msg::ToggleSquares => self.p.squares_enabled = !self.p.squares_enabled,
             Msg::ToggleCircles => self.p.circles_enabled = !self.p.circles_enabled,
             Msg::UpdateColor(color_scheme) => {
                 if Model::colors().get(&color_scheme).is_some() {
@@ -410,6 +457,13 @@ impl Component for Model {
 
         html! {
             <div class="container">
+                <div class="row text-center">
+                    <div class="col-sm-9">
+                    {
+                        self.render_mode_options(ctx)
+                    }
+                    </div>
+                </div>
                 <div class="row align-items-center">
                     <div class="col-sm-9">
                         <svg
@@ -439,7 +493,7 @@ impl Component for Model {
                                 </linearGradient>
                             </defs>
                             {
-                                if self.p.squares_enabled {
+                                if self.p.mode == Mode::Squares {
                                     self.render_squares()
                                 } else{
                                     html!{}
@@ -468,35 +522,13 @@ impl Component for Model {
                             }
                         </svg>
                     </div>
-                    <div class="col-sm-3">
-                        <div class="row text-center">
-                            <div class="col">
-                                {"Choose theme: " }
-                                <br/>
-                                {
-                                    self.render_color_options(ctx)
-                                }
-                            </div>
-                        </div>
-                        <div class="row text-center">
-                            <div class="col">
-                                {"Choose variant: " }
-                                <br/>
-                                {
-                                    self.render_variant_options(ctx)
-                                }
-                            </div>
-                        </div>
-                        <div class="row text-center">
-                            <div class="col">
-                                {"Choose size: " }
-                                <br/>
-                                {
-                                    self.render_size_options(ctx)
-                                }
-                            </div>
-                        </div>
-                    </div>
+                    {
+                        if self.p.mode == Mode::Squares {
+                            self.render_squares_options(ctx)
+                        } else {
+                            html!{}
+                        }
+                    }
                 </div>
                 /*
                 <input
@@ -607,6 +639,24 @@ impl Model {
         }
     }
 
+    fn render_mode_options(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <select name="mode" id="mode" onchange={ctx.link().callback(|e: Event|{
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateMode(select.value().into())
+            })}>
+            {{
+                let modes: Vec<String> = vec![Mode::Squares.into()]; // TODO add Mode::Strings.into() here
+                modes.into_iter().map(|mode_name|{
+                    html!{
+                        <option value={mode_name.to_string()} selected={self.p.mode == mode_name.clone().into()}>{mode_name}</option>
+                    }
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
     fn render_variant_options(&self, ctx: &Context<Self>) -> Html {
         html! {
             <select name="variants" id="variants" onchange={ctx.link().callback(|e: Event| {
@@ -677,6 +727,40 @@ impl Model {
                     .collect::<Html>()
             })
             .collect::<Html>()
+    }
+
+    fn render_squares_options(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <div class="col-sm-3">
+            <div class="row text-center">
+                <div class="col">
+                    {"Choose theme: " }
+                    <br/>
+                    {
+                        self.render_color_options(ctx)
+                    }
+                </div>
+            </div>
+            <div class="row text-center">
+                <div class="col">
+                    {"Choose variant: " }
+                    <br/>
+                    {
+                        self.render_variant_options(ctx)
+                    }
+                </div>
+            </div>
+            <div class="row text-center">
+                <div class="col">
+                    {"Choose size: " }
+                    <br/>
+                    {
+                        self.render_size_options(ctx)
+                    }
+                </div>
+            </div>
+        </div>
+        }
     }
 
     fn create_squares(&self) -> Vec<Vec<WithClustersSquare>> {
