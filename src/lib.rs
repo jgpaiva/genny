@@ -56,41 +56,6 @@ impl Default for ModelProperties {
     }
 }
 
-impl Model {
-    fn colors() -> HashMap<String, Vec<String>> {
-        vec![
-            (
-                "bluish",
-                vec!["#CDC392", "#E8E5DA", "#9EB7E5", "#648DE5", "#304C89"],
-            ),
-            (
-                "tropical",
-                vec!["#BF3100", "#8EA604", "#D76A03", "#EC9F05", "#F5BB00"],
-            ),
-            (
-                "accented",
-                vec!["#011627", "#D5CAD6", "#2EC4B6", "#E71D36", "#FF9F1C"],
-            ),
-            (
-                "pastel",
-                vec!["#1A535C", "#4ECDC4", "#721817", "#FF6B6B", "#F49D37"],
-            ),
-            (
-                "reddish",
-                vec!["#370617", "#DC2F02", "#F48C06", "#FFBA08", "#9D0208"],
-            ),
-        ]
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                (*k).to_owned(),
-                v.iter().map(|x| (*x).to_owned()).collect::<Vec<String>>(),
-            )
-        })
-        .collect()
-    }
-}
-
 #[allow(dead_code)]
 enum Msg {
     ToggleArrows,
@@ -98,8 +63,10 @@ enum Msg {
     ToggleCircles,
     UpdateColor(String),
     UpdateVariant(String),
-    UpdateSize(String),
+    UpdateSize(Size),
     UpdateMode(Mode),
+    UpdateStringsRadius(Size),
+    UpdateStringsSplits(HowMany),
 }
 
 struct Circle {
@@ -182,7 +149,7 @@ impl FromStr for Variant {
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 enum Mode {
     Squares,
-    Strings,
+    Strings(StringsModeProps),
 }
 
 impl Default for Mode {
@@ -196,23 +163,54 @@ impl From<String> for Mode {
         if s == "Squares" {
             Mode::Squares
         } else if s == "Strings" {
-            Mode::Strings
+            Mode::Strings(Default::default())
         } else {
             Default::default()
         }
     }
 }
 
-impl From<Mode> for String {
-    fn from(mode: Mode) -> Self {
-        match mode {
-            Mode::Squares => "Squares".to_owned(),
-            Mode::Strings => "Strings".to_owned(),
+impl FromStr for Mode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "Squares" {
+            Ok(Mode::Squares)
+        } else if s == "Strings" {
+            Ok(Mode::Strings(Default::default()))
+        } else {
+            Err(format!("Could not parse mode from str: {}", s))
         }
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+impl ToString for Mode {
+    fn to_string(&self) -> String {
+        match self {
+            Mode::Squares => "Squares".to_owned(),
+            Mode::Strings(_) => "Strings".to_owned(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+struct StringsModeProps {
+    splits: HowMany,
+    radius: Size,
+    show_base: bool,
+}
+
+impl Default for StringsModeProps {
+    fn default() -> Self {
+        Self {
+            splits: HowMany::Many,
+            radius: Size::Medium,
+            show_base: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 enum Size {
     Small,
     Medium,
@@ -241,6 +239,35 @@ impl FromStr for Size {
             Ok(Size::Large)
         } else {
             Err(format!("Could not parse size from str: {}", s))
+        }
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+enum HowMany {
+    Few,
+    Many,
+}
+
+impl ToString for HowMany {
+    fn to_string(&self) -> String {
+        match self {
+            HowMany::Few => "Few".to_owned(),
+            HowMany::Many => "Many".to_owned(),
+        }
+    }
+}
+
+impl FromStr for HowMany {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "Few" {
+            Ok(HowMany::Few)
+        } else if s == "Many" {
+            Ok(HowMany::Many)
+        } else {
+            Err(format!("Could not parse how many from str: {}", s))
         }
     }
 }
@@ -392,7 +419,7 @@ impl Component for Model {
                         self.p.paths_enabled = false;
                         self.p.arrows_enabled = false;
                     }
-                    Mode::Strings => {
+                    Mode::Strings(_) => {
                         self.p.circles_enabled = false;
                         self.p.paths_enabled = false;
                         self.p.arrows_enabled = false;
@@ -420,18 +447,17 @@ impl Component for Model {
                 };
                 self.p.variant = variant;
             }
-            Msg::UpdateSize(variant) => {
-                let size = if variant == "Small" {
-                    Size::Small
-                } else if variant == "Medium" {
-                    Size::Medium
-                } else if variant == "Large" {
-                    Size::Large
-                } else {
-                    unreachable!()
-                };
+            Msg::UpdateSize(size) => {
                 self.p.size = size;
             }
+            Msg::UpdateStringsRadius(size) => match self.p.mode {
+                Mode::Squares => unreachable!(),
+                Mode::Strings(ref mut props) => props.radius = size,
+            },
+            Msg::UpdateStringsSplits(splits) => match self.p.mode {
+                Mode::Squares => unreachable!(),
+                Mode::Strings(ref mut props) => props.splits = splits,
+            },
         }
         LocalStorage::set(STORAGE_KEY, &self.p).expect("failed to set");
         true
@@ -457,13 +483,6 @@ impl Component for Model {
 
         html! {
             <div class="container">
-                <div class="row text-center">
-                    <div class="col-sm-9">
-                    {
-                        self.render_mode_options(ctx)
-                    }
-                    </div>
-                </div>
                 <div class="row align-items-center">
                     <div class="col-sm-9">
                         <svg
@@ -493,10 +512,10 @@ impl Component for Model {
                                 </linearGradient>
                             </defs>
                             {
-                                if self.p.mode == Mode::Squares {
-                                    self.render_squares()
+                                if self.p.circles_enabled {
+                                    self.render_circles()
                                 } else{
-                                    html!{}
+                                    vec![html!{}]
                                 }
                             }
                             {
@@ -514,21 +533,34 @@ impl Component for Model {
                                 }
                             }
                             {
-                                if self.p.circles_enabled {
-                                    self.render_circles()
-                                } else{
-                                    vec![html!{}]
+                                match self.p.mode {
+                                    Mode::Squares => {
+                                        vec![self.render_squares()]
+                                    },
+                                    Mode::Strings(p) => {
+                                        self.render_strings(p)
+                                    },
                                 }
                             }
                         </svg>
                     </div>
                     {
-                        if self.p.mode == Mode::Squares {
-                            self.render_squares_options(ctx)
-                        } else {
-                            html!{}
+                        match self.p.mode {
+                            Mode::Squares => {
+                                self.render_squares_options(ctx)
+                            },
+                            Mode::Strings(_) => {
+                                self.render_strings_options(ctx)
+                            }
                         }
                     }
+                </div>
+                <div class="row text-center">
+                    <div class="col-sm-9">
+                    {
+                        self.render_mode_options(ctx)
+                    }
+                    </div>
                 </div>
                 /*
                 <input
@@ -569,6 +601,39 @@ impl Component for Model {
 }
 
 impl Model {
+    fn colors() -> HashMap<String, Vec<String>> {
+        vec![
+            (
+                "bluish",
+                vec!["#CDC392", "#E8E5DA", "#9EB7E5", "#648DE5", "#304C89"],
+            ),
+            (
+                "tropical",
+                vec!["#BF3100", "#8EA604", "#D76A03", "#EC9F05", "#F5BB00"],
+            ),
+            (
+                "accented",
+                vec!["#011627", "#D5CAD6", "#2EC4B6", "#E71D36", "#FF9F1C"],
+            ),
+            (
+                "pastel",
+                vec!["#1A535C", "#4ECDC4", "#721817", "#FF6B6B", "#F49D37"],
+            ),
+            (
+                "reddish",
+                vec!["#370617", "#DC2F02", "#F48C06", "#FFBA08", "#9D0208"],
+            ),
+        ]
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                (*k).to_owned(),
+                v.iter().map(|x| (*x).to_owned()).collect::<Vec<String>>(),
+            )
+        })
+        .collect()
+    }
+
     fn get_width(&self) -> usize {
         let base_size = 170;
         match self.p.size {
@@ -643,13 +708,13 @@ impl Model {
         html! {
             <select name="mode" id="mode" onchange={ctx.link().callback(|e: Event|{
                 let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
-                Msg::UpdateMode(select.value().into())
+                Msg::UpdateMode(select.value().parse().unwrap())
             })}>
             {{
-                let modes: Vec<String> = vec![Mode::Squares.into()]; // TODO add Mode::Strings.into() here
+                let modes = vec![Mode::Squares.to_string(), Mode::Strings(Default::default()).to_string()];
                 modes.into_iter().map(|mode_name|{
                     html!{
-                        <option value={mode_name.to_string()} selected={self.p.mode == mode_name.clone().into()}>{mode_name}</option>
+                        <option value={mode_name.to_string()} selected={self.p.mode.to_string() == mode_name.clone()}>{mode_name}</option>
                     }
                 }).collect::<Html>()
             }}
@@ -677,12 +742,60 @@ impl Model {
         html! {
             <select name="sizes" id="sizes" onchange={ctx.link().callback(|e: Event| {
                 let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
-                Msg::UpdateSize(select.value())
+                Msg::UpdateSize(select.value().parse().unwrap())
             })}>
             {{
                 let sizes:Vec<String> = vec![Size::Small.to_string(), Size::Medium.to_string(), Size::Large.to_string()];
                 sizes.iter().map(|size|{
                     html!{<option value={size.clone()} selected={self.p.size.to_string() == *size}>{size}</option>}
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
+    fn render_strings_radius_options(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <select name="sizes" id="sizes" onchange={ctx.link().callback(|e: Event| {
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateStringsRadius(select.value().parse().unwrap())
+            })}>
+            {{
+                let sizes = vec![Size::Small, Size::Medium, Size::Large];
+                let current_size = match self.p.mode {
+                    Mode::Squares => unreachable!(),
+                    Mode::Strings(props) =>  props.radius,
+                };
+                sizes.iter().map(|size|{
+                    html!{<option
+                            value={size.to_string()}
+                            selected={current_size == *size}>
+                            {size.to_string()}
+                        </option>}
+                }).collect::<Html>()
+            }}
+            </select>
+        }
+    }
+
+    fn render_strings_splits_options(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <select name="splits" id="splits" onchange={ctx.link().callback(|e: Event| {
+                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
+                Msg::UpdateStringsSplits(select.value().parse().unwrap())
+            })}>
+            {{
+                let splits = vec![HowMany::Few, HowMany::Many];
+                let current_splits = match self.p.mode {
+                    Mode::Squares => unreachable!(),
+                    Mode::Strings(props) =>  props.splits,
+                };
+                splits.iter().map(|splits|{
+                    html!{<option
+                            value={splits.to_string()}
+                            selected={current_splits == *splits}>
+                            {splits.to_string()}
+                        </option>}
                 }).collect::<Html>()
             }}
             </select>
@@ -731,7 +844,7 @@ impl Model {
 
     fn render_squares_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="col-sm-3">
+        <div class="col-sm-3">
             <div class="row text-center">
                 <div class="col">
                     {"Choose theme: " }
@@ -756,6 +869,31 @@ impl Model {
                     <br/>
                     {
                         self.render_size_options(ctx)
+                    }
+                </div>
+            </div>
+        </div>
+        }
+    }
+
+    fn render_strings_options(&self, ctx: &Context<Self>) -> Html {
+        html! {
+        <div class="col-sm-3">
+            <div class="row text-center">
+                <div class="col">
+                    {"Choose circle size: " }
+                    <br/>
+                    {
+                        self.render_strings_radius_options(ctx)
+                    }
+                </div>
+            </div>
+            <div class="row text-center">
+                <div class="col">
+                    {"Choose number of lines: " }
+                    <br/>
+                    {
+                        self.render_strings_splits_options(ctx)
                     }
                 </div>
             </div>
@@ -946,6 +1084,155 @@ impl Model {
                         fill={color.to_string()} />
                 }
             })
+            .collect()
+    }
+
+    fn render_strings(&self, props: StringsModeProps) -> Vec<Html> {
+        let splits = match props.splits {
+            HowMany::Few => 20,
+            HowMany::Many => 40,
+        };
+        let radius = match props.radius {
+            Size::Small => 15.0,
+            Size::Medium => 30.0,
+            Size::Large => 45.0,
+        };
+        let show_base = props.show_base;
+
+        let circle_center = (
+            self.get_width() as f32 / 2.0,
+            self.get_height() as f32 / 2.0,
+        );
+        let square_p = (
+            self.get_width() as f32 / 10.0,
+            self.get_height() as f32 / 10.0,
+        );
+        let square_width = self.get_width() as f32 * 8.0 / 10.0;
+        let square_height = self.get_height() as f32 * 8.0 / 10.0;
+        let mut res = vec![];
+        let base = vec![
+            html! {
+                <circle
+                    cx={(circle_center.0).to_string()}
+                    cy={(circle_center.1).to_string()}
+                    r={radius.to_string()}
+                    fill="red" />
+            },
+            html! {
+                <rect
+                    x={square_p.0.to_string()}
+                    y={square_p.1.to_string()}
+                    width={square_width.to_string()}
+                    height={square_height.to_string()}
+                    rx="0"
+                    ry ="0"
+                    stroke={"red"}
+                    />
+            },
+        ];
+        for i in base {
+            if show_base {
+                res.push(i);
+            }
+        }
+        let circle_points = self.make_circle_points(splits, circle_center, radius);
+        for p in circle_points.iter() {
+            if show_base {
+                res.push(self.render_point(*p));
+            }
+        }
+        let square_points = self.make_square_points(splits, square_p, square_width, square_height);
+        for p in square_points.iter() {
+            if show_base {
+                res.push(self.render_point(*p));
+            }
+        }
+
+        let mut path = vec![];
+        for (p1, p2) in circle_points.into_iter().zip(square_points.into_iter()) {
+            path.push(p1);
+            path.push(p2);
+        }
+        res.push(self.render_simple_path(path));
+        res
+    }
+
+    fn render_simple_path(&self, path: Vec<(f32, f32)>) -> Html {
+        let path: String = path
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| {
+                if i == 0 {
+                    format!("M {} {}", p.0, p.1)
+                } else {
+                    format!("L {} {}", p.0, p.1)
+                }
+            })
+            .collect();
+        html! {
+            <path d={path} stroke="blue" fill="transparent"/>
+        }
+    }
+
+    fn render_point(&self, p: (f32, f32)) -> Html {
+        html! {
+            <circle
+                cx={p.0.to_string()}
+                cy={p.1.to_string()}
+                r="1"
+                fill="black"/>
+        }
+    }
+
+    fn make_circle_points(
+        &self,
+        splits: i32,
+        circle_center: (f32, f32),
+        radius: f32,
+    ) -> Vec<(f32, f32)> {
+        (0..splits)
+            .map(|i| {
+                let angle = (std::f32::consts::PI * 2.0 / splits as f32) * i as f32;
+                (
+                    (circle_center.0 - angle.cos() * radius),
+                    (circle_center.1 - angle.sin() * radius),
+                )
+            })
+            .collect()
+    }
+
+    fn make_square_points(
+        &self,
+        splits: i32,
+        square_p: (f32, f32),
+        square_width: f32,
+        square_height: f32,
+    ) -> Vec<(f32, f32)> {
+        (0..splits / 4)
+            .map(|i| {
+                (
+                    square_p.0 + i as f32 * (square_width / splits as f32 * 4.0),
+                    square_p.1,
+                )
+            })
+            .chain((0..splits / 4).map(|i| {
+                (
+                    square_p.0 + square_width,
+                    square_p.1 + i as f32 * (square_height / splits as f32 * 4.0),
+                )
+            }))
+            .chain((0..splits / 4).map(|i| {
+                (
+                    square_p.0 + (splits / 4 - i) as f32 * (square_width / splits as f32 * 4.0),
+                    square_p.1 + square_height,
+                )
+            }))
+            .chain((0..splits / 4).map(|i| {
+                (
+                    square_p.0,
+                    square_p.1 + (splits / 4 - i) as f32 * (square_height / splits as f32 * 4.0),
+                )
+            }))
             .collect()
     }
 
