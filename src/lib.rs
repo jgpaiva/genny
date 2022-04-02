@@ -154,7 +154,7 @@ enum Mode {
 
 impl Default for Mode {
     fn default() -> Self {
-        Mode::Squares
+        Mode::Strings(Default::default())
     }
 }
 
@@ -203,8 +203,8 @@ struct StringsModeProps {
 impl Default for StringsModeProps {
     fn default() -> Self {
         Self {
-            splits: HowMany::Many,
-            radius: Size::Medium,
+            splits: HowMany::TooMany,
+            radius: Size::Small,
             show_base: false,
         }
     }
@@ -247,6 +247,7 @@ impl FromStr for Size {
 enum HowMany {
     Few,
     Many,
+    TooMany,
 }
 
 impl ToString for HowMany {
@@ -254,6 +255,7 @@ impl ToString for HowMany {
         match self {
             HowMany::Few => "Few".to_owned(),
             HowMany::Many => "Many".to_owned(),
+            HowMany::TooMany => "TooMany".to_owned(),
         }
     }
 }
@@ -266,6 +268,8 @@ impl FromStr for HowMany {
             Ok(HowMany::Few)
         } else if s == "Many" {
             Ok(HowMany::Many)
+        } else if s == "TooMany" {
+            Ok(HowMany::TooMany)
         } else {
             Err(format!("Could not parse how many from str: {}", s))
         }
@@ -787,7 +791,7 @@ impl Model {
                 Msg::UpdateStringsSplits(select.value().parse().unwrap())
             })}>
             {{
-                let splits = vec![HowMany::Few, HowMany::Many];
+                let splits = vec![HowMany::Few, HowMany::Many, HowMany::TooMany];
                 let current_splits = match self.p.mode {
                     Mode::Squares => unreachable!(),
                     Mode::Strings(props) =>  props.splits,
@@ -1091,8 +1095,9 @@ impl Model {
 
     fn render_strings(&self, props: StringsModeProps) -> Vec<Html> {
         let splits = match props.splits {
-            HowMany::Few => 20,
-            HowMany::Many => 40,
+            HowMany::Few => 40,
+            HowMany::Many => 80,
+            HowMany::TooMany => 160,
         };
         let radius = match props.radius {
             Size::Small => 15.0,
@@ -1171,8 +1176,10 @@ impl Model {
                 }
             })
             .collect();
+        // close the path
+        let path = format!("{} Z", path);
         html! {
-            <path d={path} stroke="blue" fill="transparent"/>
+            <path d={path} stroke="blue" fill="transparent" stroke-width="0.1"/>
         }
     }
 
