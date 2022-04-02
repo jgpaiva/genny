@@ -557,6 +557,8 @@ impl Component for Model {
                 </div>
                 <div class="row text-center">
                     <div class="col-sm-9">
+                    {"Choose genny mode: " }
+                    <br/>
                     {
                         self.render_mode_options(ctx)
                     }
