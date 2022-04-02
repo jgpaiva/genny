@@ -13,7 +13,7 @@ This is a simple playground that allows me to explore ideas around generative ar
 
 It supports some basic level of customization (theme, size), and every time you change settings or reload the page, a new image is generated.
 
-<h2><strong>You can play with it <a href="https://jgpaiva.github.io/genie/">here</a>.</strong></h2>
+<h2><strong>You can play with it <a href="https://jgpaiva.github.io/genny/">here</a>.</strong></h2>
 
 ## 🚴 Usage
 
@@ -29,4 +29,4 @@ This'll start an auto-refresh browser window, which will refresh the page everyt
 
 As long as you have these two commands running, you'll see realtime updates of the page as soon as you change and save a file, to get a really short feedback cycle between change and outcome.
 
-To release to github pages, run `./release`, add the newly generated files, and push to github.
+All updates to the `/docs` folder are reflected on github pages <a href="https://jgpaiva.github.io/genny/">here</a>.
