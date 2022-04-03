@@ -1132,11 +1132,11 @@ impl Model {
             self.get_height() as f32 / 2.0,
         );
         let square_p = (
-            self.get_width() as f32 / 10.0,
-            self.get_height() as f32 / 10.0,
+            self.get_width() as f32 / 20.0,
+            self.get_height() as f32 / 20.0,
         );
-        let square_width = self.get_width() as f32 * 8.0 / 10.0;
-        let square_height = self.get_height() as f32 * 8.0 / 10.0;
+        let square_width = self.get_width() as f32 * 9.0 / 10.0;
+        let square_height = self.get_height() as f32 * 9.0 / 10.0;
         let mut res = vec![];
         let base = vec![
             html! {
