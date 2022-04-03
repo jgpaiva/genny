@@ -1240,7 +1240,7 @@ impl Model {
             path.push(*p1);
             path.push(*p2);
         }
-        res.push(self.render_simple_path(path, "blue"));
+        res.push(self.render_simple_path(path, "#1B065E"));
 
         let mut path = vec![];
         for (p1, p2) in circle_points
@@ -1253,7 +1253,7 @@ impl Model {
             path.push(*p1);
             path.push(*p2);
         }
-        res.push(self.render_simple_path(path, "red"));
+        res.push(self.render_simple_path(path, "#EF2D56"));
         res
     }
 
