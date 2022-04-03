@@ -69,6 +69,7 @@ enum Msg {
     UpdateMode(Mode),
     UpdateStringsRadius(Size),
     UpdateStringsSplits(HowMany),
+    UpdateStringsAperture(usize),
 }
 
 struct Circle {
@@ -200,6 +201,7 @@ struct StringsModeProps {
     splits: HowMany,
     radius: Size,
     show_base: bool,
+    aperture: usize,
 }
 
 impl Default for StringsModeProps {
@@ -208,6 +210,7 @@ impl Default for StringsModeProps {
             splits: HowMany::Lots,
             radius: Size::Large,
             show_base: false,
+            aperture: 30,
         }
     }
 }
@@ -469,7 +472,19 @@ impl Component for Model {
             },
             Msg::UpdateStringsSplits(splits) => match self.p.mode {
                 Mode::Squares => unreachable!(),
-                Mode::Strings(ref mut props) => props.splits = splits,
+                Mode::Strings(ref mut props) => {
+                    let current_aperture_as_percent =
+                        props.aperture as f32 / Self::convert_splits(props.splits) as f32;
+                    let next_aperture = (current_aperture_as_percent
+                        * Self::convert_splits(splits) as f32)
+                        .round() as usize;
+                    props.aperture = next_aperture;
+                    props.splits = splits;
+                }
+            },
+            Msg::UpdateStringsAperture(aperture) => match self.p.mode {
+                Mode::Squares => unreachable!(),
+                Mode::Strings(ref mut props) => props.aperture = aperture,
             },
         }
         LocalStorage::set(STORAGE_KEY, &self.p).expect("failed to set");
@@ -924,6 +939,45 @@ impl Model {
             { self.render_strings_splits_options(ctx) }
             </div>
             </div>
+            <div class="row">
+            <div class="col">
+            <form>
+            <div class="form-group">
+                <label
+                    for="formControlRange"
+                    style="width: 100%; text-align:center">
+                    {"Aperture:"}
+                </label>
+                <input
+                    type="range"
+                    class="custom-range"
+                    style="width: 100%; text-align:center"
+                    id="formControlRange"
+                    min="0"
+                    max={{
+                        let splits = match self.p.mode {
+                            Mode::Squares => unreachable!(),
+                            Mode::Strings(p) => p.splits,
+                        };
+                        let splits = Self::convert_splits(splits);
+                        (splits -1).to_string()
+                    }}
+                    value={{
+                        let aperture = match self.p.mode {
+                            Mode::Squares => unreachable!(),
+                            Mode::Strings(p) => p.aperture,
+                        };
+                        aperture.to_string()
+                    }}
+                    onchange={ctx.link().callback(|e: Event|{
+                        let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+                        let value: usize = input.value().parse().unwrap();
+                        Msg::UpdateStringsAperture(value)
+                    })}/>
+            </div>
+            </form>
+            </div>
+            </div>
         </div>
         }
     }
@@ -1114,17 +1168,22 @@ impl Model {
             .collect()
     }
 
-    fn render_strings(&self, props: StringsModeProps) -> Vec<Html> {
-        let splits = match props.splits {
+    fn convert_splits(how_many: HowMany) -> i32 {
+        match how_many {
             HowMany::Few => 40,
             HowMany::Some => 80,
             HowMany::Lots => 160,
-        };
+        }
+    }
+
+    fn render_strings(&self, props: StringsModeProps) -> Vec<Html> {
+        let splits = Self::convert_splits(props.splits);
         let radius = match props.radius {
             Size::Small => 15.0,
             Size::Medium => 30.0,
             Size::Large => 45.0,
         };
+        let to_skip = props.aperture;
         let show_base = props.show_base;
 
         let circle_center = (
@@ -1188,7 +1247,7 @@ impl Model {
             .iter()
             .rev()
             .chain(circle_points.iter().rev())
-            .skip(30)
+            .skip(to_skip)
             .zip(square_points.iter().rev())
         {
             path.push(*p1);
