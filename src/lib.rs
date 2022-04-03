@@ -222,9 +222,9 @@ enum Size {
 impl ToString for Size {
     fn to_string(&self) -> String {
         match self {
-            Size::Small => "Small".to_owned(),
-            Size::Medium => "Medium".to_owned(),
-            Size::Large => "Large".to_owned(),
+            Size::Small => "S".to_owned(),
+            Size::Medium => "M".to_owned(),
+            Size::Large => "L".to_owned(),
         }
     }
 }
@@ -233,11 +233,11 @@ impl FromStr for Size {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "Small" {
+        if s == "S" {
             Ok(Size::Small)
-        } else if s == "Medium" {
+        } else if s == "M" {
             Ok(Size::Medium)
-        } else if s == "Large" {
+        } else if s == "L" {
             Ok(Size::Large)
         } else {
             Err(format!("Could not parse size from str: {}", s))
@@ -771,10 +771,11 @@ impl Model {
 
     fn render_strings_radius_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <select name="sizes" id="sizes" onchange={ctx.link().callback(|e: Event| {
-                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
-                Msg::UpdateStringsRadius(select.value().parse().unwrap())
-            })}>
+            <div class="input-group" style="margin-bottom:1em">
+            <label for="radius-options" style="width:100%; text-align:center">
+                {"Circle size:"}
+            </label>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Radius options" id="radius-options" style="width:100%">
             {{
                 let sizes = vec![Size::Small, Size::Medium, Size::Large];
                 let current_size = match self.p.mode {
@@ -782,23 +783,33 @@ impl Model {
                     Mode::Strings(props) =>  props.radius,
                 };
                 sizes.iter().map(|size|{
-                    html!{<option
-                            value={size.to_string()}
-                            selected={current_size == *size}>
-                            {size.to_string()}
-                        </option>}
+                    let active = if current_size == *size {"active"} else { "" };
+                    let klass = format!("btn btn-secondary {}", active);
+                    let v = *size;
+                    html!{
+                        <button
+                            type="button"
+                            class={klass}
+                            onclick={ctx.link().callback(move |_| {
+                                Msg::UpdateStringsRadius(v)
+                            })}>
+                                {size.to_string()}
+                        </button>
+                    }
                 }).collect::<Html>()
             }}
-            </select>
+            </div>
+            </div>
         }
     }
 
     fn render_strings_splits_options(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <select name="splits" id="splits" onchange={ctx.link().callback(|e: Event| {
-                let select: web_sys::HtmlSelectElement = e.target_unchecked_into();
-                Msg::UpdateStringsSplits(select.value().parse().unwrap())
-            })}>
+            <div class="input-group" style="margin-bottom:1em">
+            <label for="splits-options" style="width:100%; text-align:center">
+                {"Number of lines:"}
+            </label>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Splits options" id="splits-options" style="width:100%">
             {{
                 let splits = vec![HowMany::Few, HowMany::Some, HowMany::Lots];
                 let current_splits = match self.p.mode {
@@ -806,14 +817,23 @@ impl Model {
                     Mode::Strings(props) =>  props.splits,
                 };
                 splits.iter().map(|splits|{
-                    html!{<option
-                            value={splits.to_string()}
-                            selected={current_splits == *splits}>
-                            {splits.to_string()}
-                        </option>}
+                    let active = if current_splits == *splits {"active"} else { "" };
+                    let klass = format!("btn btn-secondary {}", active);
+                    let v = *splits;
+                    html!{
+                        <button
+                            type="button"
+                            class={klass}
+                            onclick={ctx.link().callback(move |_| {
+                                Msg::UpdateStringsSplits(v)
+                            })}>
+                                {splits.to_string()}
+                        </button>
+                    }
                 }).collect::<Html>()
             }}
-            </select>
+            </div>
+            </div>
         }
     }
 
@@ -894,23 +914,11 @@ impl Model {
     fn render_strings_options(&self, ctx: &Context<Self>) -> Html {
         html! {
         <div class="col-sm-3">
-            <div class="row text-center">
-                <div class="col">
-                    {"Choose circle size: " }
-                    <br/>
-                    {
-                        self.render_strings_radius_options(ctx)
-                    }
-                </div>
+            <div class="row">
+            { self.render_strings_radius_options(ctx) }
             </div>
-            <div class="row text-center">
-                <div class="col">
-                    {"Choose number of lines: " }
-                    <br/>
-                    {
-                        self.render_strings_splits_options(ctx)
-                    }
-                </div>
+            <div class="row">
+            { self.render_strings_splits_options(ctx) }
             </div>
         </div>
         }
