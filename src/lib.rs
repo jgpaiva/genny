@@ -915,10 +915,14 @@ impl Model {
         html! {
         <div class="col-sm-3">
             <div class="row">
+            <div class="col">
             { self.render_strings_radius_options(ctx) }
             </div>
+            </div>
             <div class="row">
+            <div class="col">
             { self.render_strings_splits_options(ctx) }
+            </div>
             </div>
         </div>
         }
