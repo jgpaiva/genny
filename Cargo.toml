@@ -2,7 +2,7 @@
 name = "genny"
 version = "0.1.0"
 authors = ["João Paiva <jgpaiva@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -28,6 +28,8 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 #
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
+noise = "0.7"
+palette = "0.6"
 
 [dependencies.web-sys]
 version = "0.3"

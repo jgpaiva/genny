@@ -14,6 +14,13 @@ use yew::prelude::*;
 extern crate console_error_panic_hook;
 use std::panic;
 extern crate web_sys;
+use noise::{NoiseFn, Perlin};
+use palette::encoding::Srgb;
+use palette::rgb::Rgb;
+use palette::FromColor;
+use palette::Lch;
+use palette::Pixel;
+use palette::Srgb as SrgbColor;
 use serde::{Deserialize, Serialize};
 
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
@@ -287,6 +294,7 @@ impl WithClustersSquare {
         squares: &[Vec<WithClustersSquare>],
         colors: &[String],
         variant: Variant,
+        model: &Model,
     ) -> Html {
         let max_cluster_size = squares
             .iter()
@@ -294,6 +302,7 @@ impl WithClustersSquare {
             .map(|square| square.cluster_size)
             .max()
             .expect("there's always at least the current cluster");
+
         let color = if self.cluster_size == 1 {
             colors[0].to_owned()
         } else if (self.cluster_size as f32) < ((2.0 / 5.0) * max_cluster_size as f32) {
@@ -305,6 +314,22 @@ impl WithClustersSquare {
         } else {
             colors[3].to_owned()
         };
+        let color2: Rgb<Srgb, u8> = Rgb::from_str(&color).unwrap();
+        let color2 = color2.into_format::<f32>();
+        let mut color2 = Lch::from_color(color2);
+        let perlin = Perlin::new();
+        let max_change = 60;
+        let val = perlin.get([
+            (self.p.x / model.get_width() as f32).into(),
+            (self.p.y / model.get_height() as f32).into(),
+        ]);
+        let change = val * max_change as f64;
+        color2.hue += change as f32;
+
+        let color2 = SrgbColor::from_color(color2);
+        let color: [u8; 3] = color2.into_format().into_raw();
+        let color = format!("#{:0>2x}{:0>2x}{:0>2x}", color[0], color[1], color[2]);
+
         match variant {
             Variant::Filled => {
                 let square =
@@ -885,6 +910,7 @@ impl Model {
                             &squares,
                             Self::colors().get(&self.p.color_scheme).unwrap(),
                             self.p.variant,
+                            self,
                         )
                     })
                     .collect::<Html>()
